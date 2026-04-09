@@ -2,14 +2,10 @@ repositories:
   src/exploration/BehaviorTree.CPP:
     type: git
     url: git@github.com:ntnu-arl/BehaviorTree.CPP.git
-    version: catkin_support
+    version: catkin_support -> True
   src/exploration/adaptive_obb_ros:
     type: git
     url: git@github.com:ntnu-arl/adaptive_obb_ros.git
-    version: gbplanner3
-  src/exploration/gbplanner_ros:
-    type: git
-    url: git@github.com:ntnu-arl/gbplanner_ros.git
     version: gbplanner3
   src/exploration/manhole_detector_ros:
     type: git
