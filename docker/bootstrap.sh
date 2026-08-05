@@ -23,7 +23,7 @@ git clone https://github.com/ntnu-arl/gz-sim.git -b dev/multicopter_control
 
 cd /workspace/gazebo_garden_ws
 colcon graph
-colcon build --cmake-args -DBUILD_TESTING=OFF --merge-install
+colcon build --cmake-args -DBUILD_TESTING=OFF -Wno-dev --merge-install
 
 # colcon setup scripts may reference COLCON_TRACE; with `set -u` this can fail if unset.
 export COLCON_TRACE=${COLCON_TRACE:-}
@@ -35,9 +35,10 @@ cd /workspace
 mkdir -p ros_gz_bridge_ws/src
 cd ros_gz_bridge_ws/src
 
+rm -rf /workspace/ros_gz_bridge_ws/src/ros_gz
 git clone https://github.com/ntnu-arl/ros_gz.git -b garden_noetic
 cd /workspace/ros_gz_bridge_ws
-catkin config --install
+catkin config --install --cmake-args -Wno-dev
 catkin build
 
 set +u
@@ -55,7 +56,7 @@ source /workspace/gazebo_garden_ws/install/local_setup.bash
 source /workspace/ros_gz_bridge_ws/install/local_setup.bash
 
 cd /workspace/gbplanner3_ws
-catkin config --install -DCMAKE_BUILD_TYPE=Release
+catkin config --install --cmake-args -DCMAKE_BUILD_TYPE=Release -Wno-dev
 catkin build
 
 cat >/workspace/install/setup_all.bash <<'EOF'

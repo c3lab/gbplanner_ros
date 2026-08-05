@@ -140,7 +140,17 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 RUN pip3 install vcstool
-RUN pip3 install -U colcon-common-extensions
+# argcomplete>=3.7 uses PEP 585 subscripting (Iterable[str]) at class-body
+# eval time, which breaks on Python 3.8 (noetic/Ubuntu 20.04) with
+# "TypeError: 'ABCMeta' object is not subscriptable". Pin below that.
+RUN pip3 install -U colcon-common-extensions "argcomplete<3.7"
+
+# Bootstrap/dev containers are --rm (ephemeral): known_hosts never persists,
+# so every fresh container re-triggers the interactive host-key prompt on
+# first git clone over SSH. accept-new auto-trusts unseen hosts but still
+# rejects a host key that changes from one already accepted, unlike
+# StrictHostKeyChecking=no.
+RUN git config --global core.sshCommand "ssh -o StrictHostKeyChecking=accept-new"
 
 WORKDIR /workspace
 

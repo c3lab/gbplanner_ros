@@ -1,0 +1,101 @@
+x-common-volumes: &common_volumes
+  - /tmp/.X11-unix:/tmp/.X11-unix
+  - ~/.Xauthority:/root/.Xauthority
+  - ${SSH_AUTH_SOCK}:/ssh-agent
+  - ${ROOT_DIR}/bootstrap/gazebo_garden_ws:/workspace/gazebo_garden_ws
+  - ${ROOT_DIR}/bootstrap/ros_gz_bridge_ws:/workspace/ros_gz_bridge_ws
+  - ${ROOT_DIR}/bootstrap/exploration/BehaviorTree.CPP:/workspace/gbplanner3_ws/src/exploration/BehaviorTree.CPP
+  - ${ROOT_DIR}/bootstrap/exploration/adaptive_obb_ros:/workspace/gbplanner3_ws/src/exploration/adaptive_obb_ros
+  - ${ROOT_DIR}/bootstrap/exploration/gbplanner_ros:/workspace/gbplanner3_ws/src/exploration/gbplanner_ros
+  - ${ROOT_DIR}/bootstrap/exploration/manhole_detector_ros:/workspace/gbplanner3_ws/src/exploration/manhole_detector_ros
+  - ${ROOT_DIR}/bootstrap/exploration/pci_general:/workspace/gbplanner3_ws/src/exploration/pci_general
+  - ${ROOT_DIR}/bootstrap/mapping/voxblox:/workspace/gbplanner3_ws/src/mapping/voxblox
+  - ${ROOT_DIR}/bootstrap/misc/catkin_boost_python_buildtool:/workspace/gbplanner3_ws/src/misc/catkin_boost_python_buildtool
+  - ${ROOT_DIR}/bootstrap/misc/catkin_simple:/workspace/gbplanner3_ws/src/misc/catkin_simple
+  - ${ROOT_DIR}/bootstrap/misc/eigen_catkin:/workspace/gbplanner3_ws/src/misc/eigen_catkin
+  - ${ROOT_DIR}/bootstrap/misc/eigen_checks:/workspace/gbplanner3_ws/src/misc/eigen_checks
+  - ${ROOT_DIR}/bootstrap/misc/gflags_catkin:/workspace/gbplanner3_ws/src/misc/gflags_catkin
+  - ${ROOT_DIR}/bootstrap/misc/glog_catkin:/workspace/gbplanner3_ws/src/misc/glog_catkin
+  - ${ROOT_DIR}/bootstrap/misc/kindr:/workspace/gbplanner3_ws/src/misc/kindr
+  - ${ROOT_DIR}/bootstrap/misc/mav_comm:/workspace/gbplanner3_ws/src/misc/mav_comm
+  - ${ROOT_DIR}/bootstrap/misc/minkindr:/workspace/gbplanner3_ws/src/misc/minkindr
+  - ${ROOT_DIR}/bootstrap/misc/minkindr_ros:/workspace/gbplanner3_ws/src/misc/minkindr_ros
+  - ${ROOT_DIR}/bootstrap/misc/multi_dof_joint_trajectory_rviz_plugins:/workspace/gbplanner3_ws/src/misc/multi_dof_joint_trajectory_rviz_plugins
+  - ${ROOT_DIR}/bootstrap/misc/numpy_eigen:/workspace/gbplanner3_ws/src/misc/numpy_eigen
+  - ${ROOT_DIR}/bootstrap/misc/protobuf_catkin:/workspace/gbplanner3_ws/src/misc/protobuf_catkin
+  - ${ROOT_DIR}/bootstrap/sim/arl_gazebo_sim_ros:/workspace/gbplanner3_ws/src/sim/arl_gazebo_sim_ros
+  - ${ROOT_DIR}/bootstrap/sim/lidar_simulator:/workspace/gbplanner3_ws/src/sim/lidar_simulator
+  - ${ROOT_DIR}/bootstrap/sim/rotors_simulator:/workspace/gbplanner3_ws/src/sim/rotors_simulator
+  - ${ROOT_DIR}/bootstrap/sim/smb_simulator:/workspace/gbplanner3_ws/src/sim/smb_simulator
+  - ${ROOT_DIR}/bootstrap/sim/subt_cave_sim:/workspace/gbplanner3_ws/src/sim/subt_cave_sim
+  - ${ROOT_DIR}/gbplanner:/workspace/gbplanner3_ws/src/exploration/gbplanner
+  - ${ROOT_DIR}/gbplanner_ui:/workspace/gbplanner3_ws/src/exploration/gbplanner_ui
+  - ${ROOT_DIR}/kdtree:/workspace/gbplanner3_ws/src/exploration/kdtree
+  - ${ROOT_DIR}/map_manager:/workspace/gbplanner3_ws/src/exploration/map_manager
+  - ${ROOT_DIR}/planner_common:/workspace/gbplanner3_ws/src/exploration/planner_common
+  - ${ROOT_DIR}/planner_control_interface:/workspace/gbplanner3_ws/src/exploration/planner_control_interface
+  - ${ROOT_DIR}/planner_gazebo_sim:/workspace/gbplanner3_ws/src/exploration/planner_gazebo_sim
+  - ${ROOT_DIR}/planner_msgs:/workspace/gbplanner3_ws/src/exploration/planner_msgs
+  - ${ROOT_DIR}/planner_semantic_msgs:/workspace/gbplanner3_ws/src/exploration/planner_semantic_msgs
+  - ${ROOT_DIR}/ugv_simulator:/workspace/gbplanner3_ws/src/exploration/ugv_simulator
+  - ${ROOT_DIR}/vcstool:/workspace/gbplanner3_ws/src/exploration/vcstool
+  - ${ROOT_DIR}/bootstrap/gbplanner3_ws/build:/workspace/gbplanner3_ws/build
+  - ${ROOT_DIR}/bootstrap/gbplanner3_ws/logs:/workspace/gbplanner3_ws/log
+  - ${ROOT_DIR}/bootstrap/gbplanner3_ws/install:/workspace/gbplanner3_ws/install
+  - ${ROOT_DIR}/bootstrap/gbplanner3_ws/devel:/workspace/gbplanner3_ws/devel
+  - ${ROOT_DIR}/bootstrap/install:/workspace/install
+
+x-gui-env: &gui_env
+  DISPLAY: ${DISPLAY}
+  XAUTHORITY: ${XAUTHORITY:-/root/.Xauthority}
+  SSH_AUTH_SOCK: /ssh-agent
+  # Container toolkit defaults to compute,utility only. Without "graphics"
+  # here, libGL can't see the NVIDIA ICD and silently falls back to Mesa
+  # llvmpipe (CPU software rendering) for Gazebo/rviz/OGRE.
+  NVIDIA_DRIVER_CAPABILITIES: all
+  # Hybrid Intel+NVIDIA laptops (Optimus): the X server is usually driven by
+  # the Intel iGPU, so GLX defaults to it even with the NVIDIA libs present.
+  # PRIME render offload forces GL to route through the NVIDIA vendor lib.
+  __NV_PRIME_RENDER_OFFLOAD: "1"
+  __GLX_VENDOR_LIBRARY_NAME: nvidia
+
+services:
+  base:
+    image: gbplanner:${ROS_DISTRO}-${GBPLANNER3_VERSION}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.base
+      args:
+        ROS_DISTRO: ${ROS_DISTRO}
+    network_mode: host
+    ipc: host
+    privileged: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    stdin_open: true
+    tty: true
+    environment: *gui_env
+    volumes: *common_volumes
+
+  bootstrap:
+    extends: base
+    container_name: gbplanner_ros1-bootstrap
+    volumes:
+      - ${ROOT_DIR}:/workspace/src
+      - ${ROOT_DIR}/docker/bootstrap.sh:/workspace/bootstrap.sh
+    command: bash -ci "/workspace/bootstrap.sh"
+
+  dev:
+    extends: base
+    container_name: gbplanner_ros1-dev
+    command: bash
+
+  run:
+    extends: base
+    container_name: gbplanner_ros1-run
+    command: bash -ci "source /workspace/install/setup_all.bash && roslaunch gbplanner ${LAUNCH_FILE}"

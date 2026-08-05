@@ -2,7 +2,7 @@ repositories:
   src/exploration/BehaviorTree.CPP:
     type: git
     url: git@github.com:ntnu-arl/BehaviorTree.CPP.git
-    version: catkin_support -> True
+    version: catkin_support
   src/exploration/adaptive_obb_ros:
     type: git
     url: git@github.com:ntnu-arl/adaptive_obb_ros.git
