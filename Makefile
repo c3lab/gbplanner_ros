@@ -28,7 +28,7 @@ bootstrap: ## One-shot: clone and build the full workspace into bootstrap/
 run-dev: ## Interactive dev shell over the bootstrapped workspace
 	@test -n "$$SSH_AUTH_SOCK" || (echo "SSH_AUTH_SOCK is not set. Start ssh-agent and run ssh-add before make run-dev." && exit 1)
 	@xhost +SI:localuser:root >/dev/null
-	@$(COMPOSE) run --rm dev
+	@$(COMPOSE) run --rm --name $(CONTAINER_NAME)-dev dev
 
 run: ## Launch gbplanner (LAUNCH_FILE=$(LAUNCH_FILE))
 	@test -n "$$SSH_AUTH_SOCK" || (echo "SSH_AUTH_SOCK is not set. Start ssh-agent and run ssh-add before make run." && exit 1)
