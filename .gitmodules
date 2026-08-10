@@ -1,0 +1,4 @@
+[submodule "bridge"]
+	path = bridge
+	url = https://github.com/GabrieleSantangelo/ros-jazzy-ros1-bridge-builder.git
+	branch = gbplanner

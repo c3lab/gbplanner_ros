@@ -95,7 +95,52 @@ services:
     container_name: gbplanner_ros1-dev
     command: bash
 
+  # Incremental catkin rebuild of a single package over the bootstrapped
+  # workspace. Same environment bootstrap.sh builds under, so the config it
+  # writes stays identical to the original one.
+  rebuild:
+    extends: base
+    container_name: gbplanner_ros1-rebuild
+    command: >
+      bash -ci "source /opt/ros/${ROS_DISTRO}/setup.bash &&
+      source /workspace/gazebo_garden_ws/install/local_setup.bash &&
+      source /workspace/ros_gz_bridge_ws/install/local_setup.bash &&
+      cd /workspace/gbplanner3_ws &&
+      catkin config --install --cmake-args -DCMAKE_BUILD_TYPE=Release -Wno-dev &&
+      catkin build ${REBUILD_PKG}"
+
   run:
     extends: base
     container_name: gbplanner_ros1-run
     command: bash -ci "source /workspace/install/setup_all.bash && roslaunch gbplanner ${LAUNCH_FILE}"
+
+  # One namespaced gbplanner stack, sim topic layout, use_sim_time on.
+  # roslaunch brings up its own roscore, so no separate master service.
+  # Started together with `bridge` by `make run-sim <namespace>`.
+  run-sim:
+    extends: base
+    container_name: gbplanner_ros1-${NAMESPACE}
+    # Basename only, no subdirectory: roslaunch resolves a launch file by
+    # walking the package and matching the file name, so "custom_robot/x.launch"
+    # never matches (roslib.packages.find_resource).
+    command: bash -ci "source /workspace/install/setup_all.bash && roslaunch gbplanner sim_gbplanner.launch namespace:=${NAMESPACE}"
+
+  # ros1_bridge for the same namespace. Image comes from the `bridge/`
+  # submodule's own two-stage build (`make build-bridge`), so there is no
+  # build: section here - only the prebuilt tag.
+  bridge:
+    image: ros-jazzy-ros1-bridge:${BRIDGE_VERSION}
+    container_name: ros1-bridge-${NAMESPACE}
+    network_mode: host
+    ipc: host
+    stdin_open: true
+    tty: true
+    environment:
+      BRIDGE_NAMESPACE: ${NAMESPACE}
+      BRIDGE_USE_SIM_TIME: "true"
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+    volumes:
+      # Bind-mounted (not baked in) so topic/service edits only need a
+      # container restart, no image rebuild.
+      - ${ROOT_DIR}/bridge/entrypoint:/workspace/entrypoint
+    command: bash -ci "/workspace/entrypoint/start.sh"
