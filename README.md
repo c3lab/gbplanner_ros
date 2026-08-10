@@ -94,7 +94,12 @@ make stop-sim NAMESPACE=robot0
 ```
 
 So N robots means 2N containers: N planners on N masters, and one bridge
-attached to each.
+attached to each. `RVIZ=false` drops RViz from a robot, which is usually what
+you want for every robot you are not watching:
+
+```bash
+make run-sim robot1 RVIZ=false ROS_MASTER_URI=http://localhost:11312
+```
 
 The planner runs on `use_sim_time`, so it stays frozen at time zero until
 something on the ROS 2 side publishes `/clock` through the bridge.

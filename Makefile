@@ -29,6 +29,11 @@ BRIDGE_VERSION ?= $(shell sed -n 's/^VERSION[[:space:]]*:*=[[:space:]]*//p' $(BR
 # Both containers run with network_mode: host, so "localhost" is the host's.
 ROS_MASTER_URI ?= http://localhost:11311
 
+# Whether run-sim brings up RViz alongside the planner. Turn it off for the
+# robots you are not watching - one RViz per robot is rarely what you want:
+#   make run-sim robot1 RVIZ=false
+RVIZ ?= true
+
 # `make run-sim robot0 [rebuild]` - read the words after the target as the
 # namespace plus an optional "rebuild" keyword, then register a no-op rule for
 # each of them so make does not treat them as goals of their own. While run-sim
@@ -53,6 +58,7 @@ export NAMESPACE
 export BRIDGE_VERSION
 export REBUILD_PKG
 export ROS_MASTER_URI
+export RVIZ
 
 COMPOSE := docker compose
 CONTAINER_NAME := gbplanner_ros1
@@ -111,7 +117,7 @@ ifneq ($(RUN_SIM_REBUILD),)
 	@$(MAKE) rebuild
 endif
 	@xhost +SI:localuser:root >/dev/null
-	@echo "Launching gbplanner + bridge for namespace '$(NAMESPACE)' on $(ROS_MASTER_URI) (use_sim_time:=true)..."
+	@echo "Launching gbplanner + bridge for namespace '$(NAMESPACE)' on $(ROS_MASTER_URI) (use_sim_time:=true, rviz:=$(RVIZ))..."
 	@# -p isolates each robot into its own compose project, so a second
 	@# `make run-sim robot1` adds containers instead of recreating robot0's.
 	@$(COMPOSE) -p gbplanner-$(NAMESPACE) up --abort-on-container-exit --remove-orphans run-sim bridge

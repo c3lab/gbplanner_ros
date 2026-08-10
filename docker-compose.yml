@@ -127,7 +127,7 @@ services:
     # Basename only, no subdirectory: roslaunch resolves a launch file by
     # walking the package and matching the file name, so "custom_robot/x.launch"
     # never matches (roslib.packages.find_resource).
-    command: bash -ci "source /workspace/install/setup_all.bash && roslaunch gbplanner sim_gbplanner.launch namespace:=${NAMESPACE}"
+    command: bash -ci "source /workspace/install/setup_all.bash && roslaunch gbplanner sim_gbplanner.launch namespace:=${NAMESPACE} rviz_en:=${RVIZ:-true}"
 
   # ros1_bridge for the same namespace. Image comes from the `bridge/`
   # submodule's own two-stage build (`make build-bridge`), so there is no
