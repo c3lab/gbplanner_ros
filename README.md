@@ -81,12 +81,20 @@ make run-sim robot0 rebuild
 ```
 
 Each namespace runs in its own Compose project, so a second robot adds
-containers rather than replacing the first one's:
+containers rather than replacing the first one's. Give each robot its own
+master: `ROS_MASTER_URI` is passed to both containers of a pair, the planner's
+`roslaunch` starts its `roscore` on that port and the bridge attaches to the
+same one. Reusing one port instead makes the second robot join the first one's
+graph rather than getting a master of its own.
 
 ```bash
-make run-sim robot1
+make run-sim robot0 ROS_MASTER_URI=http://localhost:11311
+make run-sim robot1 ROS_MASTER_URI=http://localhost:11312
 make stop-sim NAMESPACE=robot0
 ```
+
+So N robots means 2N containers: N planners on N masters, and one bridge
+attached to each.
 
 The planner runs on `use_sim_time`, so it stays frozen at time zero until
 something on the ROS 2 side publishes `/clock` through the bridge.

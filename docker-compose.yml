@@ -120,6 +120,10 @@ services:
   run-sim:
     extends: base
     container_name: gbplanner_ros1-${NAMESPACE}
+    environment:
+      # roslaunch starts its roscore on the port named here, so each robot can
+      # own a separate master. Merged on top of the gui env inherited from base.
+      ROS_MASTER_URI: ${ROS_MASTER_URI:-http://localhost:11311}
     # Basename only, no subdirectory: roslaunch resolves a launch file by
     # walking the package and matching the file name, so "custom_robot/x.launch"
     # never matches (roslib.packages.find_resource).
@@ -139,6 +143,9 @@ services:
       BRIDGE_NAMESPACE: ${NAMESPACE}
       BRIDGE_USE_SIM_TIME: "true"
       ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+      # Same master the paired run-sim container brings up. Read both by
+      # load_ros1_params.py and by parameter_bridge's own ros::init().
+      ROS_MASTER_URI: ${ROS_MASTER_URI:-http://localhost:11311}
     volumes:
       # Bind-mounted (not baked in) so topic/service edits only need a
       # container restart, no image rebuild.

@@ -20,6 +20,15 @@ BRIDGE_DIR := $(ROOT_DIR)/bridge
 # apart after a submodule bump.
 BRIDGE_VERSION ?= $(shell sed -n 's/^VERSION[[:space:]]*:*=[[:space:]]*//p' $(BRIDGE_DIR)/Makefile 2>/dev/null)
 
+# Master both containers of one run-sim pair attach to. Each robot gets its own
+# roscore, so running several needs a distinct port per robot - the planner's
+# roslaunch starts a master on whatever port this names, and the bridge binds
+# to the same one:
+#   make run-sim robot0 ROS_MASTER_URI=http://localhost:11311
+#   make run-sim robot1 ROS_MASTER_URI=http://localhost:11312
+# Both containers run with network_mode: host, so "localhost" is the host's.
+ROS_MASTER_URI ?= http://localhost:11311
+
 # `make run-sim robot0 [rebuild]` - read the words after the target as the
 # namespace plus an optional "rebuild" keyword, then register a no-op rule for
 # each of them so make does not treat them as goals of their own. While run-sim
@@ -43,6 +52,7 @@ export LAUNCH_FILE
 export NAMESPACE
 export BRIDGE_VERSION
 export REBUILD_PKG
+export ROS_MASTER_URI
 
 COMPOSE := docker compose
 CONTAINER_NAME := gbplanner_ros1
@@ -101,7 +111,7 @@ ifneq ($(RUN_SIM_REBUILD),)
 	@$(MAKE) rebuild
 endif
 	@xhost +SI:localuser:root >/dev/null
-	@echo "Launching gbplanner + bridge for namespace '$(NAMESPACE)' (use_sim_time:=true)..."
+	@echo "Launching gbplanner + bridge for namespace '$(NAMESPACE)' on $(ROS_MASTER_URI) (use_sim_time:=true)..."
 	@# -p isolates each robot into its own compose project, so a second
 	@# `make run-sim robot1` adds containers instead of recreating robot0's.
 	@$(COMPOSE) -p gbplanner-$(NAMESPACE) up --abort-on-container-exit --remove-orphans run-sim bridge
