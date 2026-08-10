@@ -1,0 +1,32 @@
+run_mode: kReal
+trigger_mode: kManual
+robot_type: kAerial
+output_type: kTopic
+init_motion_enable: false
+planner_trigger_lead_time: 0.1
+smooth_heading_enable: true # rate-limita lo yaw target a quanto raggiungibile con yaw_rate_max nel tempo di transito (pci_general.cpp:1067) -- con false questo check salta e il drone taglia gli angoli
+path_end_dist_thr: 0.5
+path_end_yaw_thr: 0.4
+path_progression_dist_thr: 1.0
+path_progression_dist_thr_min: 0.5
+path_progression_pitch_thr: 0.4
+path_progression_yaw_thr: 1.5 # era 3.14 = pi, disabilitava di fatto il check yaw sull'avanzamento waypoint (pci_general.cpp:765)
+path_progression_yaw_thr_min: 1.5 # idem, usato nelle svolte strette (segno yaw inverso tra segmenti)
+interpolate_traj: true
+use_time_from_start: true
+set_first_wp_speed: true
+reconnect_path: false
+pub_singple_wp: true
+init_motion:
+  z_takeoff: 1.0
+  z_drop: 0.0
+  x_forward: 0.0
+
+# Group related parameters to be shared between nodes.
+RobotDynamics:
+  v_max: 1.5 # match fleet.yaml robot0 max_speed (1.5 m/s)
+  v_init_max: 1.5
+  v_homing_max: 1.5 # aligned with gbplanner_config.yaml PlanningParams
+  yaw_rate_max: 0.5 # aligned with gbplanner_config.yaml PlanningParams
+  dt: 0.25
+  a_max: 1.0 # ceiling fisico 2.0 m/s^2 (model.sdf maximumLinearAcceleration), ma trajectory_control PID validato solo fino ~1.5 m/s cruise -- non spingere v_max E a_max al massimo insieme
