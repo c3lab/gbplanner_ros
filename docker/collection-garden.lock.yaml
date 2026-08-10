@@ -1,0 +1,87 @@
+---
+# Pinned Gazebo Garden collection.
+#
+# This replaces the upstream collection file that bootstrap.sh used to fetch at
+# run time (ntnu-arl/gz-sim, branch fix/position_control,
+# collection-garden.yaml). That file pins every repository to a *branch*, so a
+# bootstrap run picks up whatever the branch heads happen to be that day. Garden
+# is EOL and its branches still move: gz-common5 dropped the pre-5.2 assimp
+# compatibility path, so AssimpLoader.cc now includes <assimp/GltfMaterial.h>
+# unconditionally. Ubuntu 20.04 (Focal) - the base of the noetic image - ships
+# assimp 5.0.1, which has no such header, and the build dies with:
+#
+#   gz-common/graphics/src/AssimpLoader.cc:38:10: fatal error:
+#   assimp/GltfMaterial.h: No such file or directory
+#
+# The commits below are the ones the known-good workspace was built from, so a
+# fresh bootstrap reproduces it instead of tracking upstream drift.
+#
+# To bump the collection: check out the new commits, verify `make bootstrap`
+# builds, then regenerate this file from the workspace with
+#   cd bootstrap/gazebo_garden_ws/src && vcs export --exact
+# and re-add these comments.
+repositories:
+  gz-cmake:  # gz-cmake3
+    type: git
+    url: https://github.com/gazebosim/gz-cmake
+    version: 435c514c917bc97ca34af88ec1c9ce50369a66d5
+  gz-common:  # gz-common5, last commit that still guards assimp < 5.2
+    type: git
+    url: https://github.com/gazebosim/gz-common
+    version: 2cab1e5cc0cfacaf9bbcd4a7af544d3715237dbe
+  gz-fuel-tools:  # gz-fuel-tools8
+    type: git
+    url: https://github.com/gazebosim/gz-fuel-tools
+    version: 3734f08bf206de3de6831e642473da9c98b10438
+  gz-sim:  # ntnu-arl fork, dev/multicopter_control
+    type: git
+    url: https://github.com/ntnu-arl/gz-sim.git
+    version: 1a051c3a7859f4a9af16c6aa1550409ce3388231
+  gz-gui:  # gz-gui7
+    type: git
+    url: https://github.com/gazebosim/gz-gui
+    version: 4d5b4ab0ab01c169f658b77d41ecc338996071fe
+  gz-launch:  # gz-launch6
+    type: git
+    url: https://github.com/gazebosim/gz-launch
+    version: f6adb4fab514535bcec5c65aca105555862fba7d
+  gz-math:  # gz-math7
+    type: git
+    url: https://github.com/gazebosim/gz-math
+    version: ce4cc80e5677cf2a86f6b3c3a36debb7ce1e2d3e
+  gz-msgs:  # gz-msgs9
+    type: git
+    url: https://github.com/gazebosim/gz-msgs
+    version: 08b267714ea2d8f32758af13c8ef06ce6eb3b078
+  gz-physics:  # gz-physics6
+    type: git
+    url: https://github.com/gazebosim/gz-physics
+    version: 286c7157e87bb432cc52c1168fd1c9c2ccfa3838
+  gz-plugin:  # gz-plugin2
+    type: git
+    url: https://github.com/gazebosim/gz-plugin
+    version: 25b10154cbe7a23e0bbf939fcc7cd63be39f70da
+  gz-rendering:  # gz-rendering7
+    type: git
+    url: https://github.com/gazebosim/gz-rendering
+    version: dc096fc2050df5318ecb9a2d8d998f553be27b58
+  gz-sensors:  # gz-sensors7
+    type: git
+    url: https://github.com/gazebosim/gz-sensors
+    version: 4fcd8ed26d40a2016b86fe000cea7846c98832f5
+  gz-tools:  # gz-tools2
+    type: git
+    url: https://github.com/gazebosim/gz-tools
+    version: 79da96501f475aa5f36854ca1986569394c2995a
+  gz-transport:  # gz-transport12
+    type: git
+    url: https://github.com/gazebosim/gz-transport
+    version: 0223a9f014718d184cf6304a7e655da1515ca613
+  gz-utils:  # gz-utils2
+    type: git
+    url: https://github.com/gazebosim/gz-utils
+    version: 53eaee7fcfeeff6ee02246bf412b0298eefc54c4
+  sdformat:  # sdf13
+    type: git
+    url: https://github.com/gazebosim/sdformat
+    version: 31bbc9b905a93280b0ce3f63f4f03ba05efb8103

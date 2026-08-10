@@ -49,7 +49,7 @@ own:
 | Target | What it does |
 | --- | --- |
 | `make build` | Builds the `gbplanner:noetic-3.0.0` container image only. |
-| `make bootstrap` | Clones and builds the full workspace into `bootstrap/` — Gazebo Garden, the `ros_gz` bridge and `gbplanner3_ws`. This is the long one. |
+| `make bootstrap` | Clones and builds the full workspace into `bootstrap/` — Gazebo Garden, the `ros_gz` bridge and `gbplanner3_ws`. This is the long one. The Gazebo Garden sources come from `docker/collection-garden.lock.yaml`, which pins every repository to a commit: Garden is EOL but its branches still move, and a moving `gz-common5` stops compiling against the assimp 5.0.1 that Ubuntu 20.04 ships. Bump the pins there, not by re-pointing at an upstream collection file. |
 | `make build-bridge` | Builds the ROS 1 ↔ ROS 2 `ros1_bridge` image from the `bridge/` submodule. Copies the ROS 1 `planner_msgs` into the bridge build context first: `ros1_bridge` generates its conversion factories at build time, so the message definitions have to be present before the image is built. |
 
 `make rebuild` does an incremental catkin build of a single package
