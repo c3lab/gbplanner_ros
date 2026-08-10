@@ -156,4 +156,4 @@ WORKDIR /workspace
 
 RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc
 
-CMD ["bash"]e
+CMD ["bash"]
