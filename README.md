@@ -10,123 +10,115 @@ For an extensive documentation, installation instructions, and demos please visi
 
 ## Installation
 
-### Create workspace for GBPlanner3
-```bash
-mkdir ~/gbplanner3_dev_env
-```
+Everything is built and run inside Docker, driven by the `Makefile` at the root
+of the repository. Nothing is installed on the host, and the upstream manual
+workspace setup (Gazebo Garden from source, `ros_gz` bridge, catkin workspace)
+is reproduced by `docker/bootstrap.sh` instead.
 
-### GazeboSim: Garden
-If you intend to use the [Gazebo](https://gazebosim.org/home) simulator, you will need to install the Gazebo Garden from source on Ubuntu 20.04 using the following instructions. The instructions have been taken from the original documentation [here](https://gazebosim.org/docs/garden/install_ubuntu_src).
+### Host requirements
 
-#### Install tools:
-```bash
-sudo apt install python3-pip lsb-release gnupg curl git
-pip3 install vcstool
-pip3 install -U colcon-common-extensions
-```
+* Docker with the Compose plugin
+* NVIDIA Container Toolkit — without it Gazebo and RViz silently fall back to
+  CPU software rendering
+* An `ssh-agent` holding a key with access to the cloned repositories: the
+  bootstrap step clones over SSH
+* `git` and `git-lfs`
+* An X server, for RViz
 
-#### Create a workspace for gazebo:
-```bash
-cd ~/gbplanner3_dev_env
-mkdir -p gazebo_garden_ws/src
-cd gazebo_garden_ws/src
-```
-
-#### Get source files:
-```bash
-curl -O https://raw.githubusercontent.com/ntnu-arl/gz-sim/refs/heads/fix/position_control/collection-garden.yaml
-vcs import < collection-garden.yaml
-```
-
-#### Install dependancies:
-```bash
-sudo curl https://packages.osrfoundation.org/gazebo.gpg --output /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
-sudo apt-get update
-
-cd ~/gbplanner3_dev_env/gazebo_garden_ws/src
-sudo apt -y install \
-  $(sort -u $(find . -iname 'packages-'`lsb_release -cs`'.apt' -o -iname 'packages.apt' | grep -v '/\.git/') | sed '/gz\|sdf/d' | tr '\n' ' ')
-```
-> **_NOTE:_** Replace the files of the `gz-sim` folder with the files from [this](https://github.com/ntnu-arl/gz-sim/tree/dev/multicopter_control).
-
-#### Build:
+### Clone
 
 ```bash
-cd ~/gbplanner3_dev_env/gazebo_garden_ws
-colcon graph
-colcon build --cmake-args -DBUILD_TESTING=OFF --merge-install
+git clone git@github.com:c3lab/gbplanner_ros.git -b gbplanner3-dghost
+cd gbplanner_ros
+git submodule update --init --recursive
 ```
 
-#### Source the workspace:
+`--recursive` is not optional: `bridge/` carries a nested submodule of its own
+(the ROS 2 `planner_msgs`), and the bridge image cannot be built without it.
+
+### Build
+
 ```bash
-source ~/gbplanner3_dev_env/gazebo_garden_ws/install/setup.bash
+eval $(ssh-agent) && ssh-add
+make build-all
 ```
 
-### ROS-GZ Bridge
-#### Create a workspace for gazebo:
-```bash
-cd ~/gbplanner3_dev_env
-mkdir -p ros_gz_bridge_ws/src
-cd ros_gz_bridge_ws/src
-```
-#### Clone the bridge:
-```bash
-git clone git@github.com:ntnu-arl/ros_gz.git -b garden_noetic
-cd ~/ros_gz_bridge_ws
-catkin config --install
-catkin build
-```
-> **_NOTE:_** Make sure `ros_gz_bridge_ws` extends `~/gbplanner3_dev_env/gazebo_garden_ws/install` and `/opt/ros/noetic`.
+`build-all` runs the three build steps in order. Each is also available on its
+own:
 
-#### Source the workspace:
-```bash
-source ~/gbplanner3_dev_env/ros_gz_bridge_ws/install/setup.bash
-```
+| Target | What it does |
+| --- | --- |
+| `make build` | Builds the `gbplanner:noetic-3.0.0` container image only. |
+| `make bootstrap` | Clones and builds the full workspace into `bootstrap/` — Gazebo Garden, the `ros_gz` bridge and `gbplanner3_ws`. This is the long one. |
+| `make build-bridge` | Builds the ROS 1 ↔ ROS 2 `ros1_bridge` image from the `bridge/` submodule. Copies the ROS 1 `planner_msgs` into the bridge build context first: `ros1_bridge` generates its conversion factories at build time, so the message definitions have to be present before the image is built. |
 
-## Installing GBPlanner3
+`make rebuild` does an incremental catkin build of a single package
+(`REBUILD_PKG`, default `gbplanner`) over the already bootstrapped workspace.
+Only C++ and message changes need it — launch files and YAML configs are read
+from the bind-mounted source tree at run time.
 
-#### Install dependancies:
+## Usage
+
+### Simulation
+
+Use `make run-sim <namespace>`. It brings up the namespaced planner and the
+`ros1_bridge` together, with `use_sim_time` enabled and the sim topic layout
+(`sensor_measurements/odom`, `sensor_measurements/lidar/points`):
+
 ```bash
-sudo apt install python3-catkin-tools \
-libgoogle-glog-dev \
-ros-noetic-joy \
-ros-noetic-twist-mux \
-ros-noetic-interactive-marker-twist-server \
-ros-noetic-octomap-msgs \
-ros-noetic-octomap-ros \
-git-lfs
+make run-sim robot0
 ```
 
-#### Create the workspace:
+Two containers start: `gbplanner_ros1-robot0`, running
+`sim_gbplanner.launch` (which brings up its own `roscore`), and
+`ros1-bridge-robot0`, bridging that namespace. The bridge waits for the ROS 1
+master, so start order does not matter. `Ctrl-C` stops both.
+
+Append `rebuild` to rebuild the `gbplanner` package before launching:
+
 ```bash
-mkdir -p ~/gbplanner3_dev_env/gbplanner3_ws/src/exploration
-cd ~/gbplanner3_dev_env/gbplanner3_ws/src/exploration
-```
-#### Clone the planner
-```bash
-git clone git@github.com:ntnu-arl/gbplanner_ros.git -b gbplanner3
+make run-sim robot0 rebuild
 ```
 
-#### Clone and update the required packages
+Each namespace runs in its own Compose project, so a second robot adds
+containers rather than replacing the first one's:
+
 ```bash
-cd ~/gbplanner3_dev_env/gbplanner3_ws/
-vcs import < ./src/exploration/gbplanner_ros/vcstool/packages.repos
-cd src/sim/subt_cave_sim
-git lfs pull
+make run-sim robot1
+make stop-sim NAMESPACE=robot0
 ```
 
-#### Build
-```bash
-catkin config -DCMAKE_BUILD_TYPE=Release
-catkin build
-```
-> **_NOTE:_** Make sure `gbplanner3_ws` extends `~/gbplanner3_dev_env/gazebo_garden_ws/install`, `~/gbplanner3_dev_env/ros_gz_bridge_ws/install` and `/opt/ros/noetic`.
+The planner runs on `use_sim_time`, so it stays frozen at time zero until
+something on the ROS 2 side publishes `/clock` through the bridge.
 
-#### Source
+Bridged topics and services live in `bridge/entrypoint/bridge_topics.yaml`,
+which is bind-mounted into the container — editing it needs a restart, not a
+rebuild.
+
+### Standalone demos
+
+The self-contained Gazebo scenarios shipped upstream are launched with
+`make run`:
+
 ```bash
-source ~/gbplanner3_dev_env/gbplanner3_ws/devel/setup.sh
+make run                                              # uav_gz_cave_exploration.launch
+make run LAUNCH_FILE=ugv_gzc_urban_exploration.launch
 ```
+
+`LAUNCH_FILE` is a file name without any directory: `roslaunch` resolves launch
+files by base name, so a path like `uav/gz/uav_gz_cave_exploration.launch` does
+not resolve.
+
+### Development
+
+```bash
+make run-dev     # interactive shell over the bootstrapped workspace
+make enter-dev   # attach another shell to the running dev container
+make stop        # stop and remove the containers
+make clean       # stop the containers and drop the image
+```
+
+`make help` lists every target.
 
 ## Robots using GBPlanner, GBPlanner2, GBPlanner3:
 ![robots](img/gbplanner3_robots.png)
