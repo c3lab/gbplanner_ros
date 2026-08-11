@@ -4,6 +4,11 @@ set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
+export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new"
+
+# vcstool checks known_hosts directly before spawning git, so we need to populate it manually
+mkdir -p ~/.ssh
+ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
 
 # Gazebo Garden collection, pinned to commits rather than branch heads. The
 # upstream collection file this used to curl at run time
