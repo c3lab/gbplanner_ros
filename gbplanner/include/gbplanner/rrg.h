@@ -44,6 +44,7 @@
 #include "planner_common/trajectory.h"
 #include "planner_common/utils.h"
 #include "map_manager/map_manager.h"
+#include "planner_msgs/FrontierPoint.h"
 #include "planner_msgs/PlanningBound.h"
 #include "planner_msgs/PlanningMode.h"
 #include "planner_msgs/planner_dynamic_global_bound.h"
@@ -259,6 +260,19 @@ class Rrg {
   std::vector<geometry_msgs::Pose> getHomingPath(std::string tgt_frame);
   std::vector<geometry_msgs::Pose> getGlobalPath(
       geometry_msgs::PoseStamped& waypoint);
+
+  // Report the frontier vertices of the global graph -- the ones drawn as red
+  // spheres in the "frontier" namespace of the global graph visualization --
+  // scored and sorted the way calculateGlobalPath ranks its candidates, best
+  // first. Pass skip_gain_refresh to reuse the cached gains instead of
+  // re-evaluating them.
+  void getFrontiers(bool skip_gain_refresh,
+                    std::vector<planner_msgs::FrontierPoint>& frontiers);
+
+  // Sample the local graph once and merge whatever comes out as a frontier
+  // into the global graph, so getFrontiers() has something to report without
+  // the planner having been triggered.
+  bool updateFrontiers();
 
   std::vector<geometry_msgs::Pose> getOpeningTraversalPath();
   std::vector<geometry_msgs::Pose> getOpeningTraversalPath(OpeningTraversalMode mode, OpeningTraversalStatus &status);

@@ -63,6 +63,9 @@ void Gbplanner::initializeAttributes() {
   planner_goto_wp_service_ =
       nh_.advertiseService("gbplanner/go_to_waypoint",
                            &Gbplanner::plannerGotoWaypointCallback, this);
+  planner_get_frontiers_service_ =
+      nh_.advertiseService("gbplanner/get_frontiers",
+                           &Gbplanner::plannerGetFrontiersCallback, this);
   planner_enable_untraversable_polygon_subscriber_service_ =
       nh_.advertiseService(
           "gbplanner/enable_untraversable_polygon_subscriber",
@@ -147,6 +150,18 @@ bool Gbplanner::plannerGotoWaypointCallback(
     planner_msgs::planner_go_to_waypoint::Response& res) {
   res.path.clear();
   res.path = rrg_->getGlobalPath(req.waypoint);
+  return true;
+}
+
+bool Gbplanner::plannerGetFrontiersCallback(
+    planner_msgs::planner_get_frontiers::Request& req,
+    planner_msgs::planner_get_frontiers::Response& res) {
+  res.frontiers.clear();
+  if (req.force_update) rrg_->updateFrontiers();
+  rrg_->getFrontiers(req.skip_gain_refresh, res.frontiers);
+  res.header.stamp = ros::Time::now();
+  res.header.frame_id = planning_params_.global_frame_id;
+  res.success = !res.frontiers.empty();
   return true;
 }
 

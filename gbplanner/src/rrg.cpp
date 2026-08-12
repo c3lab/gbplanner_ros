@@ -4813,6 +4813,164 @@ std::vector<geometry_msgs::Pose> Rrg::getGlobalPath(
   return ret_path;
 }
 
+bool Rrg::updateFrontiers() {
+  // One planning iteration minus the path evaluation. Frontiers are marked by
+  // computeExplorationGain() and only reach the global graph through
+  // addFrontiers(), both of which run inside a planning step -- so a planner
+  // that was never triggered leaves the global graph empty and there is
+  // nothing for getFrontiers() to report.
+  //
+  // Safe to run alongside the planner: the node spins single-threaded, so this
+  // can only land between iterations, and every iteration opens with reset()
+  // and rebuilds the local graph from scratch anyway.
+  bool use_current_state_og = planning_params_.use_current_state;
+  planning_params_.use_current_state = true;
+  reset();
+  planning_params_.use_current_state = use_current_state_og;
+
+  if (buildGraph() != GraphStatus::OK) {
+    ROS_WARN_COND(global_verbosity >= Verbosity::WARN,
+                  "[GlobalGraph] Could not build a local graph, no frontier "
+                  "to add.");
+    return false;
+  }
+
+  // Same prefix evaluateGraph() runs before it starts scoring paths.
+  local_graph_->findShortestPaths(local_graph_rep_);
+  local_graph_->findLeafVertices(local_graph_rep_);
+  correctYaw();
+  computeExplorationGain(planning_params_.leafs_only_for_volumetric_gain,
+                         planning_params_.cluster_vertices_for_gain);
+
+  addFrontiers(0);  // id given as 0 because it is not used
+  return true;
+}
+
+void Rrg::getFrontiers(bool skip_gain_refresh,
+                       std::vector<planner_msgs::FrontierPoint>& frontiers) {
+  frontiers.clear();
+  int num_vertices = global_graph_->getNumVertices();
+  if (num_vertices <= 1) {
+    ROS_WARN_COND(global_verbosity >= Verbosity::WARN,
+                  "[GlobalGraph] Graph is empty, no frontier to report.");
+    return;
+  }
+
+  // Collect the frontiers, re-evaluating their gain the same way
+  // calculateGlobalPath does before it picks one. addRefPathToGraph copies the
+  // vertex type into the global graph but not the volumetric gain, so a
+  // freshly grafted frontier reads zero until something recomputes it --
+  // without this pass the newest frontiers would sort last for no reason.
+  std::vector<Vertex*> global_frontiers;
+  for (int id = 0; id < num_vertices; ++id) {
+    Vertex* v = global_graph_->getVertex(id);
+    if (v == NULL) continue;
+    if (v->type != VertexType::kFrontier) continue;
+    if (!skip_gain_refresh) {
+      computeVolumetricGainRayModelNoBound(v->state, v->vol_gain);
+      if (!v->vol_gain.is_frontier) {
+        v->type = VertexType::kUnvisited;
+        continue;
+      }
+    }
+    global_frontiers.push_back(v);
+  }
+  if (global_frontiers.empty()) {
+    ROS_WARN_COND(global_verbosity >= Verbosity::WARN,
+                  "[GlobalGraph] No frontier in the global graph.");
+    return;
+  }
+
+  // Distances over the global graph. Unlike calculateGlobalPath this does not
+  // splice the current state in as a new vertex: a coordinator polling this
+  // service would grow the graph on every call. Dijkstra runs from the nearest
+  // existing vertex and the straight hop to it is added back, which under a
+  // exp(-0.01 * d) discount costs a fraction of a percent on the score.
+  StateVec cur_state;
+  cur_state << current_state_[0], current_state_[1], current_state_[2],
+      current_state_[3], current_state_[4];
+  cur_state[2] -=
+      (planning_params_.robot_height - planning_params_.max_ground_height);
+
+  Vertex* nearest_vertex = NULL;
+  if ((!global_graph_->getNearestVertex(&cur_state, &nearest_vertex)) ||
+      (nearest_vertex == NULL)) {
+    ROS_WARN_COND(global_verbosity >= Verbosity::WARN,
+                  "[GlobalGraph] No vertex near the robot, cannot rank.");
+    return;
+  }
+  double hop_to_graph =
+      (cur_state.head(3) - nearest_vertex->state.head(3)).norm();
+
+  ShortestPathsReport from_robot_rep;
+  if (!global_graph_->findShortestPaths(nearest_vertex->id, from_robot_rep)) {
+    ROS_ERROR_COND(global_verbosity >= Verbosity::ERROR,
+                   "[GlobalGraph] Failed to find shortest paths from robot.");
+    return;
+  }
+  ShortestPathsReport from_home_rep;
+  if (!global_graph_->findShortestPaths(from_home_rep)) {
+    ROS_ERROR_COND(global_verbosity >= Verbosity::ERROR,
+                   "[GlobalGraph] Failed to find shortest paths from home.");
+    return;
+  }
+
+  const double kGDistancePenalty = 0.01;
+  frontiers.reserve(global_frontiers.size());
+  for (auto& f : global_frontiers) {
+    double to_frontier =
+        hop_to_graph + global_graph_->getShortestDistance(f->id, from_robot_rep);
+    double to_home = global_graph_->getShortestDistance(f->id, from_home_rep);
+
+    double time_to_target = to_frontier / planning_params_.v_homing_max;
+    double time_to_home = to_home / planning_params_.v_homing_max;
+    // Mirrors calculateGlobalPath verbatim, parenthesised only to spell out
+    // what that expression already does: '+' binds tighter than '?:', so the
+    // condition is the sum and the cost collapses to time_to_home. Kept as is
+    // so this ranking matches the one the planner acts on.
+    double time_cost =
+        (time_to_target + planning_params_.auto_homing_enable) ? time_to_home
+                                                               : 0;
+    double time_spare = 0;
+    bool feasible = isRemainingTimeSufficient(time_cost, time_spare);
+    if (!feasible) time_spare = 1;
+
+    double exp_gain;
+    if (planning_params_.select_closest_frontier)
+      exp_gain = exp(-kGDistancePenalty * to_frontier);
+    else
+      exp_gain =
+          f->vol_gain.gain * exp(-kGDistancePenalty * to_frontier);
+    exp_gain *= time_spare;
+
+    planner_msgs::FrontierPoint fp;
+    fp.id = f->id;
+    fp.position.x = f->state[0];
+    fp.position.y = f->state[1];
+    fp.position.z = f->state[2];
+    fp.yaw = f->state[3];
+    fp.num_unknown_voxels = f->vol_gain.num_unknown_voxels;
+    fp.num_free_voxels = f->vol_gain.num_free_voxels;
+    fp.num_occupied_voxels = f->vol_gain.num_occupied_voxels;
+    fp.gain = f->vol_gain.gain;
+    fp.path_length = to_frontier;
+    fp.path_length_to_home = to_home;
+    fp.exp_gain = exp_gain;
+    fp.feasible = feasible;
+    frontiers.push_back(fp);
+  }
+
+  std::sort(frontiers.begin(), frontiers.end(),
+            [](const planner_msgs::FrontierPoint& a,
+               const planner_msgs::FrontierPoint& b) {
+              return a.exp_gain > b.exp_gain;
+            });
+
+  ROS_INFO_COND(global_verbosity >= Verbosity::DEBUG,
+                "[GlobalGraph] Reporting %d ranked frontiers.",
+                (int)frontiers.size());
+}
+
 std::vector<geometry_msgs::Pose> Rrg::getHomingPath(std::string tgt_frame) {
   std::vector<geometry_msgs::Pose> ret_path;
   ret_path = searchHomingPath(tgt_frame, current_state_);

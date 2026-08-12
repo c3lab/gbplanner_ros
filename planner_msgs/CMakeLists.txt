@@ -34,6 +34,7 @@ add_service_files(
   planner_dynamic_global_bound.srv
   planner_set_planning_mode.srv
   planner_opening_approval.srv
+  planner_get_frontiers.srv
 )
 
 add_message_files(
@@ -50,6 +51,7 @@ add_message_files(
   Vertex.msg
   Edge.msg
   Graph.msg
+  FrontierPoint.msg
   CoveragePlannerLogger.msg
   BehaviourPlannerLogger.msg
   OpeningDetection.msg
@@ -63,10 +65,11 @@ add_action_files(
 
 generate_messages(
   DEPENDENCIES
+  std_msgs
   geometry_msgs
   actionlib_msgs
 )
 
 catkin_package(
-  CATKIN_DEPENDS message_runtime geometry_msgs actionlib_msgs
+  CATKIN_DEPENDS message_runtime std_msgs geometry_msgs actionlib_msgs
 )

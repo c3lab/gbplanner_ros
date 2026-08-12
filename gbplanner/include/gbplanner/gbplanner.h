@@ -13,6 +13,7 @@
 #include "planner_common/params.h"
 #include "planner_msgs/RobotStatus.h"
 #include "planner_msgs/planner_geofence.h"
+#include "planner_msgs/planner_get_frontiers.h"
 #include "planner_msgs/planner_global.h"
 #include "planner_msgs/planner_go_to_waypoint.h"
 #include "planner_msgs/planner_homing.h"
@@ -132,6 +133,7 @@ class Gbplanner {
   ros::ServiceServer planner_load_graph_service_;
   ros::ServiceServer planner_save_graph_service_;
   ros::ServiceServer planner_goto_wp_service_;
+  ros::ServiceServer planner_get_frontiers_service_;
   ros::ServiceServer planner_enable_untraversable_polygon_subscriber_service_;
   ros::ServiceServer planner_set_planning_trigger_mode_service_;
   ros::ServiceServer planner_stop_service_;
@@ -211,6 +213,11 @@ class Gbplanner {
   bool plannerGotoWaypointCallback(
       planner_msgs::planner_go_to_waypoint::Request& req,
       planner_msgs::planner_go_to_waypoint::Response& res);
+
+  // Reports the frontiers of the global graph with their volumetric gain.
+  bool plannerGetFrontiersCallback(
+      planner_msgs::planner_get_frontiers::Request& req,
+      planner_msgs::planner_get_frontiers::Response& res);
 
   bool plannerEnableUntraversablePolygonSubscriberCallback(
       std_srvs::SetBool::Request& request,
