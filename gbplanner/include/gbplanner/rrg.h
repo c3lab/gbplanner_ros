@@ -46,6 +46,7 @@
 #include "map_manager/map_manager.h"
 #include "planner_msgs/FrontierPoint.h"
 #include "planner_msgs/PlanningBound.h"
+#include "planner_msgs/TargetCost.h"
 #include "planner_msgs/PlanningMode.h"
 #include "planner_msgs/planner_dynamic_global_bound.h"
 #include "planner_msgs/planner_srv.h"
@@ -273,6 +274,13 @@ class Rrg {
   // into the global graph, so getFrontiers() has something to report without
   // the planner having been triggered.
   bool updateFrontiers();
+
+  // Score arbitrary points by what reaching them would cost this robot,
+  // reproducing the branches evaluateLocalNavigationPath takes for a goal
+  // handed to it on move_base_simple/goal. Read-only, and one Dijkstra covers
+  // the whole batch.
+  void getTargetCosts(const std::vector<geometry_msgs::Point>& targets,
+                      std::vector<planner_msgs::TargetCost>& costs);
 
   std::vector<geometry_msgs::Pose> getOpeningTraversalPath();
   std::vector<geometry_msgs::Pose> getOpeningTraversalPath(OpeningTraversalMode mode, OpeningTraversalStatus &status);

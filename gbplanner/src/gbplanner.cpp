@@ -66,6 +66,9 @@ void Gbplanner::initializeAttributes() {
   planner_get_frontiers_service_ =
       nh_.advertiseService("gbplanner/get_frontiers",
                            &Gbplanner::plannerGetFrontiersCallback, this);
+  planner_get_target_costs_service_ =
+      nh_.advertiseService("gbplanner/get_target_costs",
+                           &Gbplanner::plannerGetTargetCostsCallback, this);
   planner_enable_untraversable_polygon_subscriber_service_ =
       nh_.advertiseService(
           "gbplanner/enable_untraversable_polygon_subscriber",
@@ -162,6 +165,20 @@ bool Gbplanner::plannerGetFrontiersCallback(
   res.header.stamp = ros::Time::now();
   res.header.frame_id = planning_params_.global_frame_id;
   res.success = !res.frontiers.empty();
+  return true;
+}
+
+bool Gbplanner::plannerGetTargetCostsCallback(
+    planner_msgs::planner_get_target_costs::Request& req,
+    planner_msgs::planner_get_target_costs::Response& res) {
+  res.costs.clear();
+  rrg_->getTargetCosts(req.targets, res.costs);
+  res.header.stamp = ros::Time::now();
+  res.header.frame_id = planning_params_.global_frame_id;
+  // Costing a target the robot cannot reach is a valid answer, so success
+  // tracks whether every request target got an entry, not whether they are
+  // all reachable.
+  res.success = (res.costs.size() == req.targets.size());
   return true;
 }
 

@@ -4846,6 +4846,157 @@ bool Rrg::updateFrontiers() {
   return true;
 }
 
+void Rrg::getTargetCosts(const std::vector<geometry_msgs::Point>& targets,
+                         std::vector<planner_msgs::TargetCost>& costs) {
+  costs.clear();
+  costs.reserve(targets.size());
+  if (targets.empty()) return;
+
+  // Anything that fails before the per-target loop leaves every target marked
+  // unreachable rather than dropping entries, so the reply stays index-aligned
+  // with the request.
+  planner_msgs::TargetCost unreachable;
+  unreachable.reachable = false;
+  unreachable.mode = planner_msgs::TargetCost::MODE_DIRECT;
+  unreachable.via_frontier_id = -1;
+  unreachable.path_length = 0.0;
+  unreachable.residual_distance = 0.0;
+  unreachable.total_cost = 0.0;
+
+  int num_vertices = global_graph_->getNumVertices();
+  if (num_vertices <= 1) {
+    ROS_WARN_COND(global_verbosity >= Verbosity::WARN,
+                  "[GlobalGraph] Graph is empty, cannot cost any target.");
+    for (const auto& t : targets) {
+      planner_msgs::TargetCost c = unreachable;
+      c.target = t;
+      costs.push_back(c);
+    }
+    return;
+  }
+
+  // Anchor the robot on the graph without splicing a vertex in, for the same
+  // reason getFrontiers does not: an allocator polls this, and
+  // connectStateToGraph would grow the graph on every call.
+  StateVec cur_state;
+  cur_state << current_state_[0], current_state_[1], current_state_[2],
+      current_state_[3], current_state_[4];
+  Vertex* robot_vertex = NULL;
+  if ((!global_graph_->getNearestVertex(&cur_state, &robot_vertex)) ||
+      (robot_vertex == NULL)) {
+    ROS_WARN_COND(global_verbosity >= Verbosity::WARN,
+                  "[GlobalGraph] No vertex near the robot, cannot cost.");
+    for (const auto& t : targets) {
+      planner_msgs::TargetCost c = unreachable;
+      c.target = t;
+      costs.push_back(c);
+    }
+    return;
+  }
+  const double hop_to_graph =
+      (cur_state.head(3) - robot_vertex->state.head(3)).norm();
+
+  ShortestPathsReport from_robot;
+  if (!global_graph_->findShortestPaths(robot_vertex->id, from_robot)) {
+    ROS_ERROR_COND(global_verbosity >= Verbosity::ERROR,
+                   "[GlobalGraph] Failed to find shortest paths from robot.");
+    for (const auto& t : targets) {
+      planner_msgs::TargetCost c = unreachable;
+      c.target = t;
+      costs.push_back(c);
+    }
+    return;
+  }
+
+  // The robot-to-frontier leg does not depend on the target, so hoisting it
+  // out of the loop makes the frontier branch O(F) per target. The local
+  // navigation recomputes it per frontier because it only ever has one goal.
+  std::vector<std::pair<Vertex*, double> > frontier_legs;
+  for (int id = 0; id < num_vertices; ++id) {
+    Vertex* v = global_graph_->getVertex(id);
+    if (v == NULL) continue;
+    if (v->type != VertexType::kFrontier) continue;
+    frontier_legs.push_back(std::make_pair(
+        v, hop_to_graph + global_graph_->getShortestDistance(v->id, from_robot)));
+  }
+
+  for (const auto& t : targets) {
+    planner_msgs::TargetCost c = unreachable;
+    c.target = t;
+
+    Eigen::Vector3d tgt(t.x, t.y, t.z);
+    StateVec tgt_state;
+    tgt_state << t.x, t.y, t.z, 0.0, 0.0;
+
+    Vertex* near_target = NULL;
+    if (global_graph_->getNearestVertexInRange(
+            &tgt_state, planning_params_.local_navigation_reaching_radius,
+            &near_target) &&
+        (near_target != NULL)) {
+      // The graph already reaches the target: route to that vertex and cover
+      // the remainder directly.
+      c.mode = planner_msgs::TargetCost::MODE_DIRECT;
+      c.path_length =
+          hop_to_graph + global_graph_->getShortestDistance(near_target->id,
+                                                            from_robot);
+      c.residual_distance = (tgt - near_target->state.head(3)).norm();
+      c.total_cost = c.path_length + c.residual_distance;
+      c.reachable = true;
+      costs.push_back(c);
+      continue;
+    }
+
+    const double goal_dist = (tgt - cur_state.head(3)).norm();
+    const VoxelStatus vs = map_manager_->getVoxelStatus(tgt);
+    const bool needs_frontier =
+        (goal_dist > planning_params_.active_homing_update_radius) &&
+        ((!local_space_params_.isInsideSpace(tgt)) ||
+         (vs == VoxelStatus::kUnknown));
+
+    if (!needs_frontier) {
+      // Close enough, or already inside the local bounds: the local planner
+      // drives straight at it and the global graph never enters the picture.
+      c.mode = planner_msgs::TargetCost::MODE_LOCAL;
+      c.path_length = 0.0;
+      c.residual_distance = goal_dist;
+      c.total_cost = goal_dist;
+      c.reachable = true;
+      costs.push_back(c);
+      continue;
+    }
+
+    // Out in the unknown: the robot picks an intermediate frontier. Same cost
+    // evaluateLocalNavigationPath minimises, residual weighted by
+    // (1 + residual/total) so a target mostly made of unknown space is
+    // penalised up to twice over.
+    double best_cost = std::numeric_limits<double>::max();
+    for (const auto& leg : frontier_legs) {
+      const double residual = (tgt - leg.first->state.head(3)).norm();
+      const double total_len = leg.second + residual;
+      const double frontier_factor = (total_len > 0) ? residual / total_len : 0.0;
+      const double cost = leg.second + (1.0 + frontier_factor) * residual;
+      if (cost < best_cost) {
+        best_cost = cost;
+        c.mode = planner_msgs::TargetCost::MODE_VIA_FRONTIER;
+        c.via_frontier_id = leg.first->id;
+        c.path_length = leg.second;
+        c.residual_distance = residual;
+        c.total_cost = cost;
+        c.reachable = true;
+      }
+    }
+    if (!c.reachable) {
+      ROS_WARN_COND(global_verbosity >= Verbosity::WARN,
+                    "[GlobalGraph] No frontier to route a far target through.");
+    }
+    costs.push_back(c);
+  }
+
+  ROS_INFO_COND(global_verbosity >= Verbosity::DEBUG,
+                "[GlobalGraph] Costed %d targets against %d frontiers.",
+                (int)costs.size(), (int)frontier_legs.size());
+}
+
 void Rrg::getFrontiers(bool skip_gain_refresh,
                        std::vector<planner_msgs::FrontierPoint>& frontiers) {
   frontiers.clear();

@@ -14,6 +14,7 @@
 #include "planner_msgs/RobotStatus.h"
 #include "planner_msgs/planner_geofence.h"
 #include "planner_msgs/planner_get_frontiers.h"
+#include "planner_msgs/planner_get_target_costs.h"
 #include "planner_msgs/planner_global.h"
 #include "planner_msgs/planner_go_to_waypoint.h"
 #include "planner_msgs/planner_homing.h"
@@ -134,6 +135,7 @@ class Gbplanner {
   ros::ServiceServer planner_save_graph_service_;
   ros::ServiceServer planner_goto_wp_service_;
   ros::ServiceServer planner_get_frontiers_service_;
+  ros::ServiceServer planner_get_target_costs_service_;
   ros::ServiceServer planner_enable_untraversable_polygon_subscriber_service_;
   ros::ServiceServer planner_set_planning_trigger_mode_service_;
   ros::ServiceServer planner_stop_service_;
@@ -218,6 +220,11 @@ class Gbplanner {
   bool plannerGetFrontiersCallback(
       planner_msgs::planner_get_frontiers::Request& req,
       planner_msgs::planner_get_frontiers::Response& res);
+
+  // Scores a batch of arbitrary points by what reaching them would cost.
+  bool plannerGetTargetCostsCallback(
+      planner_msgs::planner_get_target_costs::Request& req,
+      planner_msgs::planner_get_target_costs::Response& res);
 
   bool plannerEnableUntraversablePolygonSubscriberCallback(
       std_srvs::SetBool::Request& request,
