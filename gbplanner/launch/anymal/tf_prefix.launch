@@ -1,0 +1,97 @@
+<launch>
+    <!-- Per-robot TF frame prefixing for the fleet.
+
+         tf1's tf_prefix was removed in tf2 and has no replacement: frame ids
+         are opaque strings, so a namespace does not touch them and neither
+         does renaming the root. This runs tf_remapper_cpp instead, which
+         rewrites frame ids in transit.
+
+         Nothing on the robot changes. /tf and /tf_static keep carrying the
+         bare names (world, body, os_lidar, ...), so gbplanner and every other
+         node on this master are untouched. A second, parallel stream appears
+         on /<prefix>/tf and /<prefix>/tf_static with the frames renamed - that
+         is the one to hand to the ROS 2 fleet graph.
+
+         Needs the node on the ROS 1 side:
+           sudo apt install ros-noetic-tf-remapper-cpp
+
+         Runs on the robot's host (roslaunch takes a path, the gbplanner
+         package does not have to be installed there):
+           roslaunch <this-repo>/gbplanner/launch/anymal/tf_prefix.launch prefix:=robot0
+
+         Frame list matches `rosrun tf view_frames` as of the ANYmal stack in
+         hierarchical_reasoning_ws (mimosa + msf + ouster + realsense +
+         static_tfs). tf_remapper_cpp has no wildcards: a frame missing from
+         the list below passes through UNRENAMED and will collide in the fleet
+         graph. After a stack change, re-check with:
+
+           rosrun tf view_frames && \
+             rosparam get /tf_prefixer/mappings
+
+         The three vn100_* frames come from string literals in
+         msf_core/include/msf_core/msf_sensormanagerROS.h (lines 247, 277,
+         450), not from any config - which is exactly why prefixing in transit
+         beats prefixing at the source here. -->
+
+    <arg name="prefix" default="robot0" doc="frame prefix for this robot"/>
+
+    <arg name="in_tf"          default="/tf"/>
+    <arg name="in_tf_static"   default="/tf_static"/>
+    <arg name="out_tf"         default="/$(arg prefix)/tf"/>
+    <arg name="out_tf_static"  default="/$(arg prefix)/tf_static"/>
+
+    <!-- subst_value lets $(arg prefix) expand inside the rosparam block. -->
+    <arg name="mappings" default="[
+        {old: navigation,                        new: $(arg prefix)/navigation},
+        {old: world,                             new: $(arg prefix)/world},
+        {old: body,                              new: $(arg prefix)/body},
+        {old: base,                              new: $(arg prefix)/base},
+        {old: vn100,                             new: $(arg prefix)/vn100},
+        {old: vn100_state,                       new: $(arg prefix)/vn100_state},
+        {old: vn100_state_propogated,            new: $(arg prefix)/vn100_state_propogated},
+        {old: os_sensor,                         new: $(arg prefix)/os_sensor},
+        {old: os_lidar,                          new: $(arg prefix)/os_lidar},
+        {old: os_imu,                            new: $(arg prefix)/os_imu},
+        {old: camera_link,                       new: $(arg prefix)/camera_link},
+        {old: camera_depth_frame,                new: $(arg prefix)/camera_depth_frame},
+        {old: camera_depth_optical_frame,        new: $(arg prefix)/camera_depth_optical_frame},
+        {old: camera_color_frame,                new: $(arg prefix)/camera_color_frame},
+        {old: camera_aligned_depth_to_color_frame, new: $(arg prefix)/camera_aligned_depth_to_color_frame},
+        {old: camera_color_optical_frame,        new: $(arg prefix)/camera_color_optical_frame}]"/>
+
+    <!-- Dynamic transforms. is_bidirectional stays false: the fleet's frames
+         must not flow back into this robot's own tree. -->
+    <node pkg="tf_remapper_cpp" type="tf_remap" name="tf_prefixer" output="screen">
+        <param name="old_tf_topic_name" value="$(arg in_tf)"/>
+        <param name="new_tf_topic_name" value="$(arg out_tf)"/>
+        <param name="is_bidirectional"  value="false"/>
+        <rosparam param="mappings" subst_value="true">$(arg mappings)</rosparam>
+    </node>
+
+    <!-- Static transforms. static_tf makes the node latch the accumulated set
+         instead of forwarding each message once; tf/tf_remap gets this wrong,
+         which is the reason for using tf_remapper_cpp over the built-in. The
+         node autodetects it from a topic named tf_static, set explicitly since
+         out_tf_static is namespaced. -->
+    <node pkg="tf_remapper_cpp" type="tf_remap" name="tf_static_prefixer" output="screen">
+        <param name="old_tf_topic_name" value="$(arg in_tf_static)"/>
+        <param name="new_tf_topic_name" value="$(arg out_tf_static)"/>
+        <param name="static_tf"         value="true"/>
+        <param name="is_bidirectional"  value="false"/>
+        <rosparam param="mappings" subst_value="true">$(arg mappings)</rosparam>
+    </node>
+
+    <!-- Fleet root. Every robot's tree is rooted at its own
+         $(arg prefix)/navigation, so in the merged ROS 2 graph they start out
+         as N disconnected trees - correct, because each robot's origin is
+         wherever mimosa initialised, and those are different physical points.
+         Transforms between robots are only meaningful once something
+         co-localises them; publish that alignment here, e.g.
+
+         <node pkg="tf2_ros" type="static_transform_publisher" name="fleet_root"
+               args="X Y Z QX QY QZ QW map $(arg prefix)/navigation"/>
+
+         Left out on purpose rather than filled with an identity, which would
+         silently claim every robot started at the same pose. -->
+
+</launch>
