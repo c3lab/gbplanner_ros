@@ -1,0 +1,264 @@
+# Configurations for the exploration pipeline.
+# For more details, please check comments in the params.h file and the wiki.
+#-------------------------------------------------------------------------------
+# ROBOT CONFIGURATION
+#-------------------------------------------------------------------------------
+RobotParams:
+  type:               kGroundRobot
+  size:               [0.8, 0.8, 0.3] # Actual size of the robot in meters [x, y, z]
+  size_extension_min: [0.0, 0.0, 0.0] # minimum extension outside of robot size allowed to operate
+  size_extension:     [0.2, 0.2, 0.2] # maximum extension outside of the robot size
+  center_offset:      [0.0, 0.0, 0.0]
+  relax_ratio:        0.5 # Used to define an intermediate size between size_extension_min and size_extension for planning
+  bound_mode:         kExtendedBound
+  safety_extension:   [1.5, 1.5, 0.1] # Safety extension outside the bounding box of a path segment used to improve it by pushing it away from obstacles
+#-------------------------------------------------------------------------------
+# SENSOR CONFIGURATION
+#  sensor_list: Define a set of sensors relevant to the exploration task.
+#  rotations: ZYX order;
+#             all follows ROS convention (X-forward, Y-left, Z-Up).
+#-------------------------------------------------------------------------------
+SensorParams:
+  sensor_list:      ["VLP16"]
+  VLP16:
+    type:           kLidar
+    sensor_frame:   lidar
+    max_range:      20.0
+    center_offset:  [0.0, 0.0, 0.0]
+    rotations:      [0.0, 0.0, 0.0]
+    fov:            [rad(2.0*pi), rad(pi/6)]
+    resolution:     [rad(5.0*pi/180), rad(5.0*pi/180)]
+    frontier_percentage_threshold: 0.01
+#-------------------------------------------------------------------------------
+# SAMPLING SPACE CONFIGURATION
+#   Global: Strictly defined bounds for the whole environment.
+#   Local: Define a local space wrt current robot state for planning.
+#-------------------------------------------------------------------------------
+BoundedSpaceParams:
+  Global:
+    type:           kCuboid
+    # min_val:        [-1.0, -40.0, -0.2]
+    # max_val:        [40.0, 20.0, 10.0]
+    min_val:        [-1.0, -4.0, -40.2]
+    max_val:        [26.0, 30.0, 40.0]
+  Local:
+    type:           kCuboid
+    min_val:        [-20.0, -20.0, -2.0]
+    max_val:        [20.0, 20.0, 2.0]
+    min_extension:  [-20.0, -20.0, -20.0]
+    max_extension:  [20.0, 20.0, 20.0]
+  LocalSearch:
+    type:           kCuboid
+    min_val:        [-50.0, -50.0, -10.0]
+    max_val:        [50.0, 50.0, 10.0]
+  # Adaptive OBB:
+  LocalAdaptiveExp:
+    type:           kCuboid
+    min_val:        [-10.0, -10.0, -0.75]
+    max_val:        [10.0, 10.0, 0.75]
+# NoGainZones:
+#   g1:  # Back
+#     type:           kCuboid
+#     min_val:        [-50.0, -50.0, -20.0]
+#     max_val:        [2.0, 50.0, 20.0]
+#-------------------------------------------------------------------------------
+# SAMPLING POLICY CONFIGURATION
+#   Sample space limited to 4 states: X, Y, Z, and Heading
+#-------------------------------------------------------------------------------
+RandomSamplerParams:
+  SamplerForExploration:
+    X:
+      pdf_type:       kUniform
+      sample_mode:    kLocal
+      std_val:        2.0
+    Y:
+      pdf_type:       kUniform
+      sample_mode:    kLocal
+      std_val:        2.0
+    Z:
+      pdf_type:       kUniform
+      sample_mode:    kLocal
+      std_val:        2.0
+    Heading:
+      pdf_type:       kUniform
+      sample_mode:    kManual
+      std_val:        1.0
+      mean_val:       1.0
+      min_val:        rad(-pi)
+      max_val:        rad(pi)
+    # gbplanner3's RandomSampler is 5-axis (X,Y,Z,Heading,Pitch); the gbplanner2
+    # config had no Pitch, which made loadParams fail and shut the node down.
+    Pitch:
+      pdf_type:       kConst
+      sample_mode:    kManual
+      const_val:      rad(0.0)
+  SamplerForSearching:
+    X:
+      pdf_type:       kUniform
+      sample_mode:    kLocal
+      std_val:        1.0
+    Y:
+      pdf_type:       kUniform
+      sample_mode:    kLocal
+      std_val:        1.0
+    Z:
+      pdf_type:       kUniform
+      sample_mode:    kLocal
+      std_val:        1.0
+    Heading:
+      pdf_type:       kUniform
+      sample_mode:    kManual
+      std_val:        1.0
+      mean_val:       1.0
+      min_val:        rad(-pi)
+      max_val:        rad(pi)
+    Pitch:
+      pdf_type:       kConst
+      sample_mode:    kManual
+      const_val:      rad(0.0)
+  SamplerForAdaptiveExp:
+    X:
+      pdf_type:       kUniform
+      sample_mode:    kLocal
+      std_val:        2.0
+    Y:
+      pdf_type:       kUniform
+      sample_mode:    kLocal
+      std_val:        2.0
+    Z:
+      pdf_type:       kUniform
+      sample_mode:    kLocal
+      std_val:        2.0
+    Heading:
+      pdf_type:       kUniform
+      sample_mode:    kManual
+      std_val:        1.0
+      mean_val:       1.0
+      min_val:        rad(-pi)
+      max_val:        rad(pi)
+    Pitch:
+      pdf_type:       kConst
+      sample_mode:    kManual
+      const_val:      rad(0.0)
+
+#-------------------------------------------------------------------------------
+# EXPLORATION CONFIGURATION
+# exp_sensor_list: sensors used to compute exploration gain.
+#-------------------------------------------------------------------------------
+PlanningParams:
+  type:             kBasicExploration # Options: kBasicExploration, kAdaptiveExploration
+  graph_building_mode:    kBasic         # kBasic, kBatch
+  rr_mode:          kGraph
+  exp_sensor_list:  ["VLP16"]
+  no_gain_zones_list: []
+  v_max:            0.5 # max velocity m/s
+  v_homing_max:     0.5 # max velocity m/s
+  yaw_rate_max:     0.3 # max angular velocity rad/s
+  yaw_tangent_correction: true # If true - all headings will be along the path segment
+  edge_length_min:  0.2
+  edge_length_max:  3.0
+  edge_overshoot:   0.0 #m
+  num_vertices_max: 700
+  num_edges_max:    10000
+  num_loops_cutoff: 2000
+  num_loops_max:    8000
+  nearest_range:    3.0
+  nearest_range_min: 0.2 # >= edge_length_min
+  nearest_range_max: 3.0 # <= edge_length_max
+  use_current_state: true
+  use_ray_model_for_volumetric_gain: true
+  exp_gain_voxel_size: 0.8
+  # Gains:
+  path_length_penalty: 0.01 # 0.1 #0.07
+  path_direction_penalty: 0.5 # 0.0001 #0.05
+  hanging_vertex_penalty: 5.0
+  occupied_voxel_gain: 0.0
+  free_voxel_gain:  0.0 #prefer directions towards more free voxels in case of the dead-end
+  unknown_voxel_gain: 60.0
+  traverse_length_max: 8.0
+  traverse_time_max: 500.0
+  path_safety_enhance_enable: true
+  augment_free_voxels_time: 3
+  free_frustum_before_planning: false
+  freespace_cloud_enable: false
+  leafs_only_for_volumetric_gain: true
+  cluster_vertices_for_gain: false
+  clustering_radius: 0.5
+  path_interpolation_distance: -1.0 #0.5
+  time_budget_limit: 24000 # seconds
+  time_budget_limit_marsupial: 24000
+  auto_homing_enable: true
+  go_home_if_fully_explored: true
+  nonuniform_ray_cast: false
+  ray_cast_step_size_multiplier: 1.0
+
+  use_camera_gain: false
+  annotate_map_with_camera: false
+  
+  inspection_planning: false
+
+  keep_leaf_yaw_only: true
+
+  enable_manhole_traversal: false
+  manhole_alignment_z_offset: 0.0 # -0.25
+  only_manhole_traversal: false
+
+  auto_manhole_path_approval: true
+
+  box_check_method: 0
+  line_check_method: 1
+
+  add_only_frontiers_to_global_graph: true
+
+  min_coverage_percentage: 0.9
+  inspection_xy_spacing: 0.35 # 1.0
+  inspection_z_spacing: 0.35 # 2.0
+  inspection_thr_esdf_dist: 0.7 # 1.5
+  inspection_target_viewing_range: 1.5 #1.5 # 2.5
+  inspection_graph_vertices: 500
+  max_inspection_vertices: 50
+  num_lkh_iterations: 10
+
+  max_exploration_iterations: 2
+
+  exploration_only: true
+
+  compartment_centers: [-0.5, 0.0, 1.25, 4.5, 0.0, 1.25, 9.5, 0.0, 1.25, 14.5, 0.0, 1.25]
+  
+  compartment_dimensions:
+    type:           kCuboid
+    min_val:        [-2.0, -3.0, -1.25]
+    max_val:        [4.0, 3.0, 1.25]
+
+  max_ground_height: 0.8 # All points will be projected to this height from ground
+  robot_height: 0.6  # Height of robot's base frame from ground
+  # max_inclination: rad(15.0*pi/180)
+  max_inclination: rad(20.0*pi/180)
+  interpolate_projection_distance: false
+
+  
+  auto_global_planner_enable: true
+  relaxed_corridor_multiplier: 1.0
+  homing_backward: false
+  
+  global_frame_id: world
+  global_path_inclination_check: true
+  
+  geofence_checking_enable: true
+
+AdaptiveObbParams:
+  type: kPca
+  local_pointcloud_range: 50.0
+  bounding_box_size_max: 35
+
+# GeofenceParams:
+#   AreaList: ["GLeft", "GBack", "GRight"]
+#   GBack:
+#     center: [-3.0, 0.0, 0.0]
+#     size:   [2.0, 6.0, 0.0]
+#   GLeft:
+#     center: [0.0, 4.0, 0.0]
+#     size:   [6.0, 2.0, 0.0]
+#   GRight:
+#     center: [0.0, -4.0, 0.0]
+#     size:   [6.0, 2.0, 0.0]

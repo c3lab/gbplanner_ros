@@ -1,0 +1,97 @@
+<launch>
+    <!-- Drop-in replacement for the original $(find anymal)/launch/gbplanner.launch.
+         Same external ROS interface as the gbplanner2 version it replaces:
+           in   /msf_core/odometry
+                /mimosa_node/lidar/geometric/sm_cloud_ds
+                /elevation_mapping_lidar/elevation_map_raw
+                /anymal/drawn_rectangle              (untraversable polygon)
+                /hydra_ros_node/navigation/navigation_goals
+           out  /anymal/anymal/command/trajectory
+           srv  /anymal/gbplanner, /anymal/gbplanner/homing, /anymal/gbplanner/*
+                /anymal/planner_control_interface/std_srvs/* -->
+
+    <arg name="robot_name" default="anymal"/>
+    <arg name="config_folder" default="anymal"/>
+    <arg name="rviz_en" default="false" />
+
+    <arg name="crop_pointcloud" default="false" />
+    <arg name="input_pointcloud_topic" default="/mimosa_node/lidar/geometric/sm_cloud_ds"/>
+    <arg name="output_pointcloud_topic" default="/mimosa_node/lidar/geometric/sm_cloud_ds" unless="$(arg crop_pointcloud)"/>
+    <arg name="output_pointcloud_topic" default="/mimosa_node/lidar/geometric/points_cropped" if="$(arg crop_pointcloud)"/>
+
+    <!-- Navigation goals coming from the scene graph stack. gbplanner3's PCI
+         reads external goals on /move_base_simple/goal (geometry_msgs/PoseStamped),
+         where the gbplanner2 pci_anymal read navigation/goals. -->
+    <arg name="navigation_goal_topic" default="/hydra_ros_node/navigation/navigation_goals"/>
+
+    <!-- Config files. They ship with the gbplanner package now, not with the
+         anymal package, so swapping gbplanner does not touch anymal/config. -->
+    <arg name="config_path" default="$(find gbplanner)/config/$(arg config_folder)"/>
+    <arg name="gbplanner_config_file" default="$(arg config_path)/gbplanner_config.yaml"/>
+    <arg name="pci_file" default="$(arg config_path)/planner_control_interface_sim_config.yaml"/>
+    <arg name="voxblox_config_file" default="$(arg config_path)/voxblox_sim_config.yaml"/>
+    <arg name="map_config_file" default="$(arg voxblox_config_file)"/>
+    <!-- Behaviour tree driving the gbplanner3 pipeline. -->
+    <arg name="behavior_tree_file" default="$(find gbplanner)/config/bt_xml/main_tree.xml"/>
+
+    <group ns="$(arg robot_name)">
+        <arg name="odometry_topic" default="/msf_core/odometry"/>
+
+        <!-- Graph based planning -->
+        <node pkg="gbplanner" type="gbplanner_node" name="gbplanner_node" output="screen">
+            <remap from="odometry" to="$(arg odometry_topic)" />
+            <remap from="pointcloud" to="$(arg output_pointcloud_topic)" />
+            <remap from="elevation_map" to="/elevation_mapping_lidar/elevation_map_raw" />
+            <remap from="/traversability_estimation/untraversable_polygon" to="drawn_rectangle" />
+            <!-- rrg.cpp publishes /gbplanner_path with a hardcoded leading slash,
+                 which escapes this group. Pull it back under the namespace so it
+                 does not fight the PCI publisher of the same name. -->
+            <remap from="/gbplanner_path" to="gbplanner_path" />
+            <!-- gbplanner.cpp subscribes /robot_status globally; the PCI below
+                 publishes it globally too. Remap both sides consistently. -->
+            <remap from="/robot_status" to="robot_status" />
+            <rosparam command="load" file="$(arg gbplanner_config_file)" />
+            <rosparam command="load" file="$(arg map_config_file)" />
+            <param name="behavior_tree_path" value="$(arg behavior_tree_file)" />
+        </node>
+
+        <!-- Planner and Control Interface.
+             gbplanner_pci_anymal does not exist in gbplanner3; pci_general is the
+             single PCI backend. -->
+        <node pkg="pci_general" type="pci_general_ros_node" name="gbplanner_pci_anymal_ros_node" output="screen">
+            <remap from="odometry" to="$(arg odometry_topic)"/>
+            <remap from="command/trajectory" to="$(arg robot_name)/command/trajectory" />
+            <!-- gbplanner3 exposes both the legacy direct entry point ("gbplanner")
+                 and the behaviour-tree one ("gbplanner_ros"). Point the PCI at the
+                 BT one to actually run the gbplanner3 pipeline; the legacy names
+                 stay advertised, so anything else on the robot calling
+                 /anymal/gbplanner keeps working. -->
+            <remap from="planner_server" to="gbplanner_ros" />
+            <remap from="planner_homing_server" to="gbplanner_ros_homing" />
+            <!-- External navigation goals. planner_control_interface.cpp subscribes
+                 /move_base_simple/goal with a hardcoded leading slash. -->
+            <remap from="/move_base_simple/goal" to="$(arg navigation_goal_topic)" />
+            <!-- Same hardcoded-global-topic class as above, in pci_general.cpp. -->
+            <remap from="/gbplanner_path" to="gbplanner_path" />
+            <remap from="/gbplanner_is_homing" to="gbplanner_is_homing" />
+            <remap from="/robot_status" to="robot_status" />
+            <rosparam command="load" file="$(arg pci_file)" />
+        </node>
+
+        <!-- Constrained fov for the lidar.
+             constrained_fov.py does not exist in this gbplanner. Left disabled;
+             port the script into gbplanner/scripts before setting
+             crop_pointcloud:=true. -->
+        <!--
+        <node pkg="gbplanner" type="constrained_fov.py" name="constrained_fov" output="screen" if="$(arg crop_pointcloud)">
+            <param name="input_topic" value="$(arg input_pointcloud_topic)"/>
+            <param name="output_topic" value="$(arg output_pointcloud_topic)"/>
+            <param name="horizontal_fov_min" value="-45.0"/>
+            <param name="horizontal_fov_max" value="45.0"/>
+            <param name="vertical_fov_min" value="-45.0"/>
+            <param name="vertical_fov_max" value="45.0"/>
+        </node>
+        -->
+    </group>
+
+</launch>

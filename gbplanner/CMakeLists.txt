@@ -30,5 +30,11 @@ cs_add_executable(gbplanner_node src/gbplanner_ros_node.cpp)
 target_link_libraries(gbplanner_node ${PROJECT_NAME} ${planner_common_LIBRARIES})
 
 cs_install()
+# cs_install() only ships launch/rviz/urdf/meshes/maps/worlds/Media/param, so
+# $(find gbplanner)/config/... resolves in a devel space but not in an install
+# space. Install it explicitly.
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/config/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/config
+)
 cs_export(LIBRARIES)
 
