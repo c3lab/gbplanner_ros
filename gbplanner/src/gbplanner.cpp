@@ -69,6 +69,9 @@ void Gbplanner::initializeAttributes() {
   planner_get_target_costs_service_ =
       nh_.advertiseService("gbplanner/get_target_costs",
                            &Gbplanner::plannerGetTargetCostsCallback, this);
+  planner_validate_frontiers_service_ =
+      nh_.advertiseService("gbplanner/validate_frontiers",
+                           &Gbplanner::plannerValidateFrontiersCallback, this);
   planner_enable_untraversable_polygon_subscriber_service_ =
       nh_.advertiseService(
           "gbplanner/enable_untraversable_polygon_subscriber",
@@ -179,6 +182,23 @@ bool Gbplanner::plannerGetTargetCostsCallback(
   // tracks whether every request target got an entry, not whether they are
   // all reachable.
   res.success = (res.costs.size() == req.targets.size());
+  return true;
+}
+
+bool Gbplanner::plannerValidateFrontiersCallback(
+    planner_msgs::planner_validate_frontiers::Request& req,
+    planner_msgs::planner_validate_frontiers::Response& res) {
+  res.is_unknown.clear();
+  res.gains.clear();
+  for (const auto& target : req.positions) {
+    Eigen::Vector3d pos(target.x, target.y, target.z);
+    // In GBPlanner, a frontier is a viewpoint (in kFree space) that sees enough kUnknown space.
+    // So we must use raycasting to check if it still sees kUnknown space.
+    auto vgain = rrg_->isStillFrontier(pos);
+    res.is_unknown.push_back(vgain.is_frontier);
+    res.gains.push_back(vgain.gain);
+  }
+  res.success = true;
   return true;
 }
 

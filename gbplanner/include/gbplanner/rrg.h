@@ -282,6 +282,15 @@ class Rrg {
   void getTargetCosts(const std::vector<geometry_msgs::Point>& targets,
                       std::vector<planner_msgs::TargetCost>& costs);
 
+  // Check if a point in space is still a frontier by re-evaluating its volumetric gain
+  VolumetricGain isStillFrontier(const Eigen::Vector3d& pos) {
+    StateVec state;
+    state << pos.x(), pos.y(), pos.z(), 0.0, 0.0;
+    VolumetricGain vgain;
+    computeVolumetricGainRayModelNoBound(state, vgain);
+    return vgain;
+  }
+
   std::vector<geometry_msgs::Pose> getOpeningTraversalPath();
   std::vector<geometry_msgs::Pose> getOpeningTraversalPath(OpeningTraversalMode mode, OpeningTraversalStatus &status);
   void setNextCompartmentCenter(Eigen::Vector3d &center);
