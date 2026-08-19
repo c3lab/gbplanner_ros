@@ -205,8 +205,16 @@ run-robot-bridge: ## ROS1<->ROS2 bridge for the robot: make run-robot-bridge NAM
 	@# BRIDGE_TF_FLEET picks tf_fleet_relay over tf_static_repeater, and
 	@# sim_time off keeps the ROS 1 side on wall clock. bridge_topics.yaml has
 	@# to bridge /{ns}/tf and /{ns}/tf_static for this to carry anything.
+	@#
+	@# The two namespaces are deliberately different here. On the robot the ROS 1
+	@# side answers on /$(ROBOT_NAME)/..., which every existing tool calls, while
+	@# the fleet wants this robot as /$(NAMESPACE)/... in ROS 2. An entry in
+	@# bridge_topics.yaml that names both ({ns} in "topic", {ros1_ns} in
+	@# "ros1_topic") gets a ROS 1 remap and comes out under each side's own name;
+	@# one that names only {ns} keeps the same name on both, as before.
 	@$(COMPOSE) run --rm --no-deps --name ros1-bridge-robot-$(NAMESPACE) \
 	   -e BRIDGE_NAMESPACE=$(NAMESPACE) \
+	   -e BRIDGE_ROS1_NAMESPACE=$(ROBOT_NAME) \
 	   -e BRIDGE_USE_SIM_TIME=false \
 	   -e BRIDGE_TF_FLEET=true \
 	   -e ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) \
