@@ -35,6 +35,7 @@ add_service_files(
   planner_set_planning_mode.srv
   planner_opening_approval.srv
   planner_get_frontiers.srv
+  planner_validate_frontiers.srv
   planner_get_target_costs.srv
 )
 
