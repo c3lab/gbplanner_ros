@@ -2,3 +2,4 @@ geometry_msgs/Point[] positions
 ---
 bool success
 bool[] is_unknown
+float32[] gains

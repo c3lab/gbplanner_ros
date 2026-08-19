@@ -27,6 +27,7 @@
 #include "planner_msgs/planner_set_search_mode.h"
 #include "planner_msgs/planner_srv.h"
 #include "planner_msgs/planner_string_trigger.h"
+#include "planner_msgs/planner_validate_frontiers.h"
 
 // namespace explorer {
 
@@ -136,6 +137,7 @@ class Gbplanner {
   ros::ServiceServer planner_goto_wp_service_;
   ros::ServiceServer planner_get_frontiers_service_;
   ros::ServiceServer planner_get_target_costs_service_;
+  ros::ServiceServer planner_validate_frontiers_service_;
   ros::ServiceServer planner_enable_untraversable_polygon_subscriber_service_;
   ros::ServiceServer planner_set_planning_trigger_mode_service_;
   ros::ServiceServer planner_stop_service_;
@@ -225,6 +227,10 @@ class Gbplanner {
   bool plannerGetTargetCostsCallback(
       planner_msgs::planner_get_target_costs::Request& req,
       planner_msgs::planner_get_target_costs::Response& res);
+
+  bool plannerValidateFrontiersCallback(
+      planner_msgs::planner_validate_frontiers::Request& req,
+      planner_msgs::planner_validate_frontiers::Response& res);
 
   bool plannerEnableUntraversablePolygonSubscriberCallback(
       std_srvs::SetBool::Request& request,
