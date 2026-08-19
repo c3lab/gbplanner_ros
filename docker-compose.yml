@@ -1,7 +1,12 @@
 x-common-volumes: &common_volumes
   - /tmp/.X11-unix:/tmp/.X11-unix
   - ~/.Xauthority:/root/.Xauthority
-  - ${SSH_AUTH_SOCK}:/ssh-agent
+  # Fall back to /dev/null when no agent is running: an unset SSH_AUTH_SOCK
+  # expands to ":/ssh-agent", which docker rejects outright with
+  # "invalid spec: :/ssh-agent: empty section between colons" - so every
+  # target dies, including the ones that need no git auth at all.
+  # /dev/null mounts fine and simply gives the container a dead agent socket.
+  - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
   - ${ROOT_DIR}/bootstrap/gazebo_garden_ws:/workspace/gazebo_garden_ws
   - ${ROOT_DIR}/bootstrap/ros_gz_bridge_ws:/workspace/ros_gz_bridge_ws
   - ${ROOT_DIR}/bootstrap/exploration/BehaviorTree.CPP:/workspace/gbplanner3_ws/src/exploration/BehaviorTree.CPP
@@ -112,7 +117,9 @@ services:
   run:
     extends: base
     container_name: gbplanner_ros1-run
-    command: bash -ci "source /workspace/install/setup_all.bash && roslaunch gbplanner ${LAUNCH_FILE}"
+    # LAUNCH_ARGS carries roslaunch "name:=value" pairs, so a target can pick a
+    # launch file AND parametrise it without overriding this command.
+    command: bash -ci "source /workspace/install/setup_all.bash && roslaunch gbplanner ${LAUNCH_FILE} ${LAUNCH_ARGS}"
 
   # One namespaced gbplanner stack, sim topic layout, use_sim_time on.
   # roslaunch brings up its own roscore, so no separate master service.

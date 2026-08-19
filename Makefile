@@ -8,6 +8,14 @@ ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 # Override on the command line: make run LAUNCH_FILE=ugv_gzc_urban_exploration.launch
 LAUNCH_FILE ?= uav_gz_cave_exploration.launch
 
+# Extra "name:=value" pairs appended to the roslaunch line by the `run` service.
+LAUNCH_ARGS ?=
+
+# TF frame prefix this robot gets in the fleet graph (make run-robot /
+# run-robot-bridge). Separate from NAMESPACE-as-ROS-namespace: the planner keeps
+# answering on /anymal/... locally while its frames become <prefix>/... globally.
+TF_PREFIX ?= $(NAMESPACE)
+
 # Package rebuilt by `make rebuild` / `make run-sim <ns> rebuild`.
 REBUILD_PKG ?= gbplanner
 
@@ -50,10 +58,34 @@ ifeq (run-sim,$(firstword $(MAKECMDGOALS)))
 endif
 NAMESPACE ?= robot0
 
+# ROS namespace the planner answers on, on the real robot. Kept at the
+# gbplanner2 value so operator tooling calling /anymal/... keeps working.
+ROBOT_NAME ?= anymal
+
+# DDS domain the whole fleet shares.
+ROS_DOMAIN_ID ?= 0
+
+# Address the containers advertise to ROS 1 (run-robot and run-robot-bridge
+# both). Only needed when the master is on another machine, or when it
+# registered itself under a hostname: ROS 1 hands a node's own URI to its
+# peers, so with this unset they get the container's hostname, which they
+# usually cannot resolve, and the connection dies with no useful error. Set it
+# to this host's IP on the robot's network:
+#   make run-robot NAMESPACE=robot0 ROS_MASTER_URI=http://192.168.5.108:11311 ROS_IP=192.168.5.108
+ROS_IP ?=
+
+# Passed only when non-empty. `-e ROS_IP=` would *set* the variable to the
+# empty string, and rosgraph.network.get_address_override() tests for the
+# variable's presence rather than its value - so every node would advertise
+# itself at an empty address. Same reason ROS_HOSTNAME is never passed here:
+# leaving it absent is what makes ROS 1 fall back to its own detection.
+ROS_IP_ARG := $(if $(ROS_IP),-e ROS_IP=$(ROS_IP),)
+
 export ROOT_DIR
 export ROS_DISTRO
 export GBPLANNER3_VERSION
 export LAUNCH_FILE
+export LAUNCH_ARGS
 export NAMESPACE
 export BRIDGE_VERSION
 export REBUILD_PKG
@@ -122,6 +154,50 @@ endif
 	@# `make run-sim robot1` adds containers instead of recreating robot0's.
 	@$(COMPOSE) -p gbplanner-$(NAMESPACE) up --abort-on-container-exit --remove-orphans run-sim bridge
 
+# ---------------------------------------------------------------------------
+# Real robot (`make run-robot` / `make run-robot-bridge`)
+#
+# Deliberately two targets, not one: after run-robot the whole TF picture is
+# inspectable on the robot's own ROS 1 master with no ROS 2 in the way, so a
+# problem there cannot be confused with a bridge or DDS problem. Bring the
+# bridge up only once /tf and /$(TF_PREFIX)/tf both look right.
+#
+# Neither target calls xhost or requires ssh-agent, unlike run/run-sim: a robot
+# is usually headless, and there `xhost` fails and aborts the recipe.
+#
+# Both attach to the roscore the host stack already brought up, so
+# ROS_MASTER_URI must point at it (default localhost:11311, via network_mode:
+# host).
+# ---------------------------------------------------------------------------
+run-robot: ## Planner + TF prefixing on the robot: make run-robot NAMESPACE=robot0
+	@echo "gbplanner + tf prefix '$(TF_PREFIX)' on $(ROS_MASTER_URI) (ns /$(ROBOT_NAME))..."
+	@LAUNCH_FILE=anymal_robot.launch \
+	 LAUNCH_ARGS="robot_name:=$(ROBOT_NAME) prefix:=$(TF_PREFIX)" \
+	 $(COMPOSE) run --rm --no-deps --name gbplanner-robot-$(NAMESPACE) \
+	   -e ROS_MASTER_URI=$(ROS_MASTER_URI) $(ROS_IP_ARG) run
+
+run-robot-bridge: ## ROS1<->ROS2 bridge for the robot: make run-robot-bridge NAMESPACE=robot0
+	@test -n "$(BRIDGE_VERSION)" || (echo "BRIDGE_VERSION is empty - bridge/ is not checked out. Run: git submodule update --init --recursive" && exit 1)
+	@# ppa:ros-for-jammy/noble publishes amd64 binaries only, so on an arm64
+	@# robot the bridge image rebuilds ROS 1 from that ppa's source packages
+	@# instead - see bridge/docker/build-noetic-from-source.sh. Running this
+	@# from an x86 host against the robot's master also works; that case needs
+	@# ROS_IP so the master's nodes can reach back.
+	@case "$(ROS_MASTER_URI)" in \
+	  *localhost*|*127.0.0.1*) ;; \
+	  *) test -n "$(ROS_IP)" || (echo "ROS_MASTER_URI is remote but ROS_IP is unset. The robot's ROS 1 nodes would get this host's hostname and fail to connect back. Pass ROS_IP=<this host's IP on the robot network>." && exit 1) ;; \
+	esac
+	@echo "bridge for '$(NAMESPACE)' on $(ROS_MASTER_URI), domain $(ROS_DOMAIN_ID), ROS_IP=$(ROS_IP), fleet TF on..."
+	@# BRIDGE_TF_FLEET picks tf_fleet_relay over tf_static_repeater, and
+	@# sim_time off keeps the ROS 1 side on wall clock. bridge_topics.yaml has
+	@# to bridge /{ns}/tf and /{ns}/tf_static for this to carry anything.
+	@$(COMPOSE) run --rm --no-deps --name ros1-bridge-robot-$(NAMESPACE) \
+	   -e BRIDGE_NAMESPACE=$(NAMESPACE) \
+	   -e BRIDGE_USE_SIM_TIME=false \
+	   -e BRIDGE_TF_FLEET=true \
+	   -e ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) \
+	   -e ROS_MASTER_URI=$(ROS_MASTER_URI) $(ROS_IP_ARG) bridge
+
 stop-sim: ## Stop the sim stack for one namespace: make stop-sim NAMESPACE=robot0
 	@$(COMPOSE) -p gbplanner-$(NAMESPACE) down
 
@@ -142,4 +218,4 @@ help: ## Show this help message
 	@echo "Targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "} {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: build build-bridge build-all bootstrap rebuild run-dev run run-sim stop-sim enter-dev stop clean help
+.PHONY: build build-bridge build-all bootstrap rebuild run-dev run run-sim run-robot run-robot-bridge stop-sim enter-dev stop clean help
