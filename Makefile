@@ -74,12 +74,26 @@ ROS_DOMAIN_ID ?= 0
 #   make run-robot NAMESPACE=robot0 ROS_MASTER_URI=http://192.168.5.108:11311 ROS_IP=192.168.5.108
 ROS_IP ?=
 
-# Passed only when non-empty. `-e ROS_IP=` would *set* the variable to the
-# empty string, and rosgraph.network.get_address_override() tests for the
-# variable's presence rather than its value - so every node would advertise
-# itself at an empty address. Same reason ROS_HOSTNAME is never passed here:
-# leaving it absent is what makes ROS 1 fall back to its own detection.
-ROS_IP_ARG := $(if $(ROS_IP),-e ROS_IP=$(ROS_IP),)
+# Same job as ROS_IP but by name. ROS 1 prefers it when both are set
+# (ros::network::determineHost / rosgraph.network.get_address_override read
+# ROS_HOSTNAME first), so set the one the robot's other nodes can actually
+# resolve - an IP is the safer default from inside a container.
+ROS_HOSTNAME ?=
+
+# All three network variables are plain `?=`, which means the calling shell
+# wins: make imports the environment as already-defined variables and `?=`
+# leaves those alone. That is the normal path on the robot - a shell that
+# sourced the ANYmal stack already has ROS_MASTER_URI/ROS_IP/ROS_HOSTNAME set
+# correctly, so `make run-robot` inherits them with nothing on the command
+# line, and passing them explicitly is only for overriding that.
+#
+# Each is forwarded only when non-empty. `-e ROS_IP=` would *set* the variable
+# to the empty string, and both ROS 1 client libraries test for the variable's
+# presence rather than its value - so every node would advertise itself at an
+# empty address, which is worse than not passing it at all.
+ROS_IP_ARG       := $(if $(ROS_IP),-e ROS_IP=$(ROS_IP),)
+ROS_HOSTNAME_ARG := $(if $(ROS_HOSTNAME),-e ROS_HOSTNAME=$(ROS_HOSTNAME),)
+ROS_NET_ARGS     := -e ROS_MASTER_URI=$(ROS_MASTER_URI) $(ROS_IP_ARG) $(ROS_HOSTNAME_ARG)
 
 export ROOT_DIR
 export ROS_DISTRO
@@ -174,7 +188,7 @@ run-robot: ## Planner + TF prefixing on the robot: make run-robot NAMESPACE=robo
 	@LAUNCH_FILE=anymal_robot.launch \
 	 LAUNCH_ARGS="robot_name:=$(ROBOT_NAME) prefix:=$(TF_PREFIX)" \
 	 $(COMPOSE) run --rm --no-deps --name gbplanner-robot-$(NAMESPACE) \
-	   -e ROS_MASTER_URI=$(ROS_MASTER_URI) $(ROS_IP_ARG) run
+	   $(ROS_NET_ARGS) run
 
 run-robot-bridge: ## ROS1<->ROS2 bridge for the robot: make run-robot-bridge NAMESPACE=robot0
 	@test -n "$(BRIDGE_VERSION)" || (echo "BRIDGE_VERSION is empty - bridge/ is not checked out. Run: git submodule update --init --recursive" && exit 1)
@@ -185,9 +199,9 @@ run-robot-bridge: ## ROS1<->ROS2 bridge for the robot: make run-robot-bridge NAM
 	@# ROS_IP so the master's nodes can reach back.
 	@case "$(ROS_MASTER_URI)" in \
 	  *localhost*|*127.0.0.1*) ;; \
-	  *) test -n "$(ROS_IP)" || (echo "ROS_MASTER_URI is remote but ROS_IP is unset. The robot's ROS 1 nodes would get this host's hostname and fail to connect back. Pass ROS_IP=<this host's IP on the robot network>." && exit 1) ;; \
+	  *) test -n "$(ROS_IP)$(ROS_HOSTNAME)" || (echo "ROS_MASTER_URI is remote but neither ROS_IP nor ROS_HOSTNAME is set. The robot's ROS 1 nodes would get this host's container hostname and fail to connect back. Pass ROS_IP=<this host's IP on the robot network> (or export it in the shell)." && exit 1) ;; \
 	esac
-	@echo "bridge for '$(NAMESPACE)' on $(ROS_MASTER_URI), domain $(ROS_DOMAIN_ID), ROS_IP=$(ROS_IP), fleet TF on..."
+	@echo "bridge for '$(NAMESPACE)' on $(ROS_MASTER_URI), domain $(ROS_DOMAIN_ID), ROS_IP=$(ROS_IP), ROS_HOSTNAME=$(ROS_HOSTNAME), fleet TF on..."
 	@# BRIDGE_TF_FLEET picks tf_fleet_relay over tf_static_repeater, and
 	@# sim_time off keeps the ROS 1 side on wall clock. bridge_topics.yaml has
 	@# to bridge /{ns}/tf and /{ns}/tf_static for this to carry anything.
@@ -196,7 +210,7 @@ run-robot-bridge: ## ROS1<->ROS2 bridge for the robot: make run-robot-bridge NAM
 	   -e BRIDGE_USE_SIM_TIME=false \
 	   -e BRIDGE_TF_FLEET=true \
 	   -e ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) \
-	   -e ROS_MASTER_URI=$(ROS_MASTER_URI) $(ROS_IP_ARG) bridge
+	   $(ROS_NET_ARGS) bridge
 
 stop-sim: ## Stop the sim stack for one namespace: make stop-sim NAMESPACE=robot0
 	@$(COMPOSE) -p gbplanner-$(NAMESPACE) down
