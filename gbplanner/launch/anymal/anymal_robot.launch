@@ -1,0 +1,38 @@
+<launch>
+    <!-- Everything this repo runs on the ANYmal, in one container.
+         Step 2 of 3 on the robot:
+
+           1. host      main.launch, with its gbplanner2 include commented out
+           2. this      planner + per-robot TF prefixing   (make run-robot)
+           3. bridge    ROS 1 <-> ROS 2                    (make run-robot-bridge)
+
+         Split that way on purpose: after step 2 the whole TF picture is
+         inspectable on the robot's own master, with no ROS 2 involved, so a
+         problem there is not confused with a bridge or DDS problem.
+
+         The two halves stay independent launch files. gbplanner.launch is a
+         drop-in replacement for the gbplanner2 one and must keep working when
+         launched alone; tf_prefix.launch touches no planner topic. -->
+
+    <!-- ROS namespace for the planner's topics and services. Matches what the
+         gbplanner2 stack used, so operator tooling keeps working. -->
+    <arg name="robot_name" default="anymal"/>
+
+    <!-- TF frame prefix in the fleet graph. Deliberately NOT tied to
+         robot_name: every ANYmal answers on /anymal/... locally, while the
+         fleet needs them distinguishable. -->
+    <arg name="prefix" default="robot0"/>
+
+    <arg name="planner_en"   default="true"/>
+    <arg name="tf_prefix_en" default="true"/>
+
+    <include if="$(arg planner_en)"
+             file="$(find gbplanner)/launch/anymal/gbplanner.launch">
+        <arg name="robot_name" value="$(arg robot_name)"/>
+    </include>
+
+    <include if="$(arg tf_prefix_en)"
+             file="$(find gbplanner)/launch/anymal/tf_prefix.launch">
+        <arg name="prefix" value="$(arg prefix)"/>
+    </include>
+</launch>
