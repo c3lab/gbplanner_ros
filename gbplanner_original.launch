@@ -1,0 +1,65 @@
+<launch>
+    <arg name="robot_name" default="anymal"/>
+    <arg name="config_folder" default="anymal"/>
+    <arg name="rviz_en" default="false" />
+
+    <arg name="crop_pointcloud" default="false" />
+    <arg name="input_pointcloud_topic" default="/mimosa_node/lidar/geometric/sm_cloud_ds"/>
+    <arg name="output_pointcloud_topic" default="/mimosa_node/lidar/geometric/sm_cloud_ds" unless="$(arg crop_pointcloud)"/>
+    <arg name="output_pointcloud_topic" default="/mimosa_node/lidar/geometric/points_cropped" if="$(arg crop_pointcloud)"/>
+
+    <!-- Config files -->
+    <arg name="gbplanner_config_file" default="$(find anymal)/config/gbplanner_config.yaml"/>
+    <arg name="pci_file" default="$(find anymal)/config/planner_control_interface_sim_config.yaml"/>
+    <arg name="voxblox_config_file" default="$(find anymal)/config/voxblox_sim_config.yaml"/>
+    <arg name="map_config_file" default="$(arg voxblox_config_file)"/>
+
+    <!-- <node pkg="tf" type="static_transform_publisher" name="world_map_tf" respawn="true" args="0 0 0 0 0 0 /map /world 10 "/> -->
+
+    <!-- <node pkg="anymal" type="art_path_follower.py" name="wp_tracker_client_py" output="screen" /> -->
+    <!-- <node pkg="anymal" type="tf_to_odom.py" name="tf_to_odom_py" output="screen" /> -->
+    <group ns="$(arg robot_name)">
+        <arg name="odometry_topic" default="/msf_core/odometry"/>
+        <!-- <arg name="pose_topic" default="/slam/pose"/> -->
+        <arg name="pose_topic" default="/pose_from_tf"/>
+
+        <!-- Waypoint Tracker -->
+        <!-- <node pkg="anymal" type="anymal_path_to_wp_graph.py" name="wp_tracker_client_py" output="screen" /> -->
+
+        <!-- Graph based planning -->
+        <node pkg="gbplanner" type="gbplanner_node" name="gbplanner_node" output="screen">
+            <remap from="odometry" to="$(arg odometry_topic)" />
+            <!-- <remap from="pose_stamped" to="$(arg pose_topic)" /> -->
+            <!-- voxblox_pointcloud | /point_cloud_filter/lidar/point_cloud_filtered-->
+            <remap from="pointcloud" to="$(arg output_pointcloud_topic)" />
+            <remap from="lidar_topic" to="$(arg output_pointcloud_topic)" />
+            <remap from="elevation_map" to="/elevation_mapping_lidar/elevation_map_raw" />
+            <remap from="input_range_image" to="vae/input_range_image" />
+            <remap from="/traversability_estimation/untraversable_polygon" to="drawn_rectangle" />
+            <rosparam command="load" file="$(arg gbplanner_config_file)" />
+            <rosparam command="load" file="$(arg map_config_file)" />
+        </node>
+
+        <!-- Planner and Control Interface -->
+        <node pkg="gbplanner_pci_anymal" type="gbplanner_pci_anymal_ros_node" name="gbplanner_pci_anymal_ros_node" output="screen">
+            <remap from="odometry" to="$(arg odometry_topic)"/>
+            <!-- <remap from="pose_stamped" to="$(arg pose_topic)" /> -->
+            <remap from="command/trajectory" to="$(arg robot_name)/command/trajectory" />
+            <remap from="planner_server" to="gbplanner" />
+            <remap from="planner_homing_server" to="gbplanner/homing" />
+            <remap from="navigation/goals" to="/hydra_ros_node/navigation/navigation_goals" />
+            <rosparam command="load" file="$(arg pci_file)" />
+        </node>
+
+        <!-- Constrained fov for the lidar -->
+        <node pkg="gbplanner" type="constrained_fov.py" name="gbplanner" output="screen" if="$(arg crop_pointcloud)">
+            <param name="input_topic" value="$(arg input_pointcloud_topic)"/>
+            <param name="output_topic" value="$(arg output_pointcloud_topic)"/>
+            <param name="horizontal_fov_min" value="-45.0"/>
+            <param name="horizontal_fov_max" value="45.0"/>
+            <param name="vertical_fov_min" value="-45.0"/>
+            <param name="vertical_fov_max" value="45.0"/>
+        </node>
+    </group>
+
+</launch>
