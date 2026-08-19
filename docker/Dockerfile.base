@@ -134,6 +134,15 @@ RUN apt-get update && apt-get install -y \
     ros-${ROS_DISTRO}-robot-state-publisher \
     && rm -rf /var/lib/apt/lists/*
 
+# Rewrites frame ids in transit, used by gbplanner/launch/anymal/tf_prefix.launch
+# to give each robot its own frames in a shared fleet graph. tf1's tf_prefix is
+# gone in tf2 and a namespace never reaches frame ids, so there is no built-in
+# way to do this; tf/tf_remap exists but mishandles /tf_static.
+# Its own layer so adding it does not rebuild everything above.
+RUN apt-get update && apt-get install -y \
+    ros-${ROS_DISTRO}-tf-remapper-cpp \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN apt-get update && apt-get install -y \
     lsb-release \
     gnupg \

@@ -81,6 +81,20 @@
         <rosparam param="mappings" subst_value="true">$(arg mappings)</rosparam>
     </node>
 
+    <!-- tf_remapper_cpp latches the prefixed static set once, which is enough
+         for anything on this master but does NOT survive ros1_bridge: it
+         forwards that message to ROS 2 volatile, with no history, so the fleet
+         side has a single instant to catch it. Losing that race drops the
+         robot's static frames from the fleet graph for the whole session,
+         silently. Republishing on a timer makes it converge instead. -->
+    <arg name="pump_static" default="true"/>
+    <arg name="pump_period" default="1.0"/>
+    <node if="$(arg pump_static)" pkg="gbplanner" type="tf_static_pump.py"
+          name="tf_static_pump" output="screen">
+        <param name="topic"  value="$(arg out_tf_static)"/>
+        <param name="period" value="$(arg pump_period)"/>
+    </node>
+
     <!-- Fleet root. Every robot's tree is rooted at its own
          $(arg prefix)/navigation, so in the merged ROS 2 graph they start out
          as N disconnected trees - correct, because each robot's origin is

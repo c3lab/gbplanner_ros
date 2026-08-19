@@ -36,5 +36,8 @@ cs_install()
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/config/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/config
 )
+# Same gap for Python nodes: roslaunch finds them under the source tree in a
+# devel space, and nowhere at all in an install space.
+cs_install_scripts(scripts/tf_static_pump.py)
 cs_export(LIBRARIES)
 
