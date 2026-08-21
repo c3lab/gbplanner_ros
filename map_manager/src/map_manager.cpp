@@ -11,6 +11,11 @@ double MapManager::getResolution()
   return map_manager_impl_->getResolution();
 }
 
+void MapManager::getExploredVoxels(pcl::PointCloud<pcl::PointXYZ>& ptcloud)
+{
+  map_manager_impl_->getExploredVoxels(ptcloud);
+}
+
 bool MapManager::getStatus()
 {
   return map_manager_impl_->getStatus();

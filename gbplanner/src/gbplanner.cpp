@@ -1,6 +1,10 @@
 #include "gbplanner/gbplanner.h"
 
 #include <nav_msgs/Path.h>
+#include <glog/logging.h>
+#include <iomanip>
+#include <pcl_conversions/pcl_conversions.h>
+#include "planner_msgs/planner_geofence.h"
 
 // namespace explorer {
 
@@ -81,6 +85,13 @@ void Gbplanner::initializeAttributes() {
       "gbplanner/set_planning_trigger_mode",
       &Gbplanner::plannerSetPlanningTriggerModeCallback, this);
       
+  get_explored_volume_service_ = nh_.advertiseService(
+      "gbplanner/get_explored_volume",
+      &Gbplanner::getExploredVolumeCallback, this);
+
+  explored_voxels_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(
+      "gbplanner/explored_voxels", 1);
+
   inspection_path_service_ = nh_.advertiseService(
       "gbplanner/get_inspection_path",
       &Gbplanner::inspectionServiceCallback, this);
@@ -1251,6 +1262,37 @@ bool Gbplanner::plannerSetPlanningTriggerModeCallback(
     in_trig_mode = PlannerTriggerModeType::kManual;
   rrg_->setPlannerTriggerMode(in_trig_mode);
   response.success = true;
+  return true;
+}
+
+bool Gbplanner::getExploredVolumeCallback(
+    std_srvs::Trigger::Request& req,
+    std_srvs::Trigger::Response& res) {
+  
+  pcl::PointCloud<pcl::PointXYZ> cloud;
+  rrg_->getMapManager()->getExploredVoxels(cloud);
+  
+  static std::set<std::tuple<int, int, int>> sent_voxels;
+  pcl::PointCloud<pcl::PointXYZ> delta_cloud;
+  for (const auto& pt : cloud.points) {
+    int x = std::round(pt.x / 0.4);
+    int y = std::round(pt.y / 0.4);
+    int z = std::round(pt.z / 0.4);
+    auto tup = std::make_tuple(x, y, z);
+    if (sent_voxels.find(tup) == sent_voxels.end()) {
+      sent_voxels.insert(tup);
+      delta_cloud.push_back(pt);
+    }
+  }
+  
+  sensor_msgs::PointCloud2 msg;
+  pcl::toROSMsg(delta_cloud, msg);
+  msg.header.frame_id = "world"; // Typically the global frame for gbplanner
+  msg.header.stamp = ros::Time::now();
+  explored_voxels_pub_.publish(msg);
+  
+  res.success = true;
+  res.message = "PointCloud published";
   return true;
 }
 

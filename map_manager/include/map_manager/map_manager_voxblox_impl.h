@@ -208,6 +208,9 @@ class MapManagerVoxblox {
   void setBoxCheckMethod(int m) { box_status_method_ = m;}
   void setLineCheckMethod(int m) { line_status_method_ = m;}
 
+  // Extract all observed voxels into a PointCloud (for overlapping volume evaluation)
+  void getExploredVoxels(pcl::PointCloud<pcl::PointXYZ>& ptcloud);
+
   void annotateCameraVoxels(Eigen::Vector3d& pos, std::vector<Eigen::Vector3d>& multiray_endpoints);
   void getCameraScanStatus(Eigen::Vector3d& pos, std::vector<Eigen::Vector3d>& multiray_endpoints,
     std::tuple<int, int, int>& gain_log,

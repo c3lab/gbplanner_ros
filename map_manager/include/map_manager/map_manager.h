@@ -14,6 +14,7 @@ class MapManager {
   MapManager(ros::NodeHandle& nh, ros::NodeHandle& nh_private);
 
   double getResolution();
+  void getExploredVoxels(pcl::PointCloud<pcl::PointXYZ>& ptcloud);
   bool getStatus();
   VoxelStatus getVoxelStatus(const Eigen::Vector3d& position);
   float getVoxelDistance(const Eigen::Vector3d& center);

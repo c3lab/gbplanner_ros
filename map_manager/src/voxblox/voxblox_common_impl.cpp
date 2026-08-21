@@ -268,6 +268,29 @@ VoxelStatus MapManagerVoxblox<SDFServerType, SDFVoxelType>::getRayStatus(
 }
 
 template <typename SDFServerType, typename SDFVoxelType>
+void
+MapManagerVoxblox<SDFServerType, SDFVoxelType>::getExploredVoxels(
+    pcl::PointCloud<pcl::PointXYZ>& ptcloud) {
+  ptcloud.clear();
+
+  voxblox::BlockIndexList block_list;
+  sdf_layer_->getAllAllocatedBlocks(&block_list);
+
+  for (const auto& block_idx : block_list) {
+    typename voxblox::Block<SDFVoxelType>::ConstPtr block =
+        sdf_layer_->getBlockPtrByIndex(block_idx);
+    if (!block) continue;
+    for (size_t i = 0; i < block->num_voxels(); ++i) {
+      const SDFVoxelType& voxel = block->getVoxelByLinearIndex(i);
+      if (checkUnknownStatus(&voxel)) continue;
+      
+      voxblox::Point voxel_coordi = block->computeCoordinatesFromLinearIndex(i);
+      ptcloud.push_back(pcl::PointXYZ(voxel_coordi.x(), voxel_coordi.y(), voxel_coordi.z()));
+    }
+  }
+}
+
+template <typename SDFServerType, typename SDFVoxelType>
 VoxelStatus MapManagerVoxblox<SDFServerType, SDFVoxelType>::getBoxStatusInVoxels(
     const voxblox::LongIndex& box_center, const voxblox::AnyIndex& box_voxels,
     bool stop_at_unknown_voxel) {

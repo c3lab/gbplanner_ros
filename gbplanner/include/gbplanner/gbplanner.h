@@ -141,6 +141,8 @@ class Gbplanner {
   ros::ServiceServer planner_enable_untraversable_polygon_subscriber_service_;
   ros::ServiceServer planner_set_planning_trigger_mode_service_;
   ros::ServiceServer planner_stop_service_;
+  ros::ServiceServer get_explored_volume_service_;
+  ros::Publisher explored_voxels_pub_;
   ros::ServiceServer inspection_path_service_;
   ros::ServiceServer force_compartment_transition_service_;
   ros::ServiceServer switch_operation_mode_service_;
@@ -247,7 +249,11 @@ class Gbplanner {
   bool inspectionServiceCallback(
     planner_msgs::planner_srv::Request& req,
     planner_msgs::planner_srv::Response& res);
-  
+    
+  bool getExploredVolumeCallback(
+      std_srvs::Trigger::Request& req,
+      std_srvs::Trigger::Response& res);
+
   bool switchOperationModeServiceCallback(
     std_srvs::SetBool::Request& req,
     std_srvs::SetBool::Response& res);
