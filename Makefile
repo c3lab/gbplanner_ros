@@ -1,5 +1,11 @@
 ROS_DISTRO := noetic
-GBPLANNER3_VERSION := 3.0.0
+# 3.1.0 is the first tag whose image carries ros-noetic-tf-remapper-cpp
+# (Dockerfile.base). 3.0.0 predates it: with that image tf_prefix.launch dies on
+# "cannot launch node of type [tf_remapper_cpp/tf_remap]", /$(TF_PREFIX)/tf is
+# never published, and the ROS 2 fleet TF tree stays empty - with the planner
+# itself looking perfectly healthy. Bumping the tag is what forces `make build`
+# rather than silently reusing the old image.
+GBPLANNER3_VERSION := 3.1.0
 ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 # Launch file passed to `roslaunch gbplanner`. File name only, no directory:

@@ -143,6 +143,15 @@ RUN apt-get update && apt-get install -y \
     ros-${ROS_DISTRO}-tf-remapper-cpp \
     && rm -rf /var/lib/apt/lists/*
 
+# Renders grid_map_msgs/GridMap in RViz - i.e. the elevation map, the surface
+# this planner projects every ground sample onto. Without it that topic cannot
+# be displayed at all, and the layer that decides where a kGroundRobot may
+# sample is exactly the one you cannot see. Visualisation only, nothing on the
+# robot needs it.
+RUN apt-get update && apt-get install -y \
+    ros-${ROS_DISTRO}-grid-map-rviz-plugin \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN apt-get update && apt-get install -y \
     lsb-release \
     gnupg \
