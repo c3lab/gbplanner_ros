@@ -53,3 +53,5 @@ CATKIN_IGNORE
 .vscode/
 
 bootstrap/
+# rosbag di diagnostica: pesanti, non vanno nel repo
+bags/

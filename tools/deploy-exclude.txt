@@ -1,0 +1,39 @@
+# rsync exclude list for deploying this repo to the robot:
+#
+#   rsync -av --dry-run --exclude-from=tools/deploy-exclude.txt \
+#     --backup --backup-dir=/home/arl/jetson_ssd/dghost/_backup_$(date +%F_%H%M) \
+#     ./ arl@<robot>:/home/arl/jetson_ssd/dghost/gbplanner_ros/
+#
+# Drop --dry-run once the file list looks right. Never add --delete: the robot
+# holds things this tree does not, and losing them is not recoverable from here.
+
+# --- the robot owns these, not the repo -------------------------------------
+# Tuned on the robot for the actual site: the global/local sampling boxes above
+# all. Overwriting it replaces a measured configuration with the repo default,
+# and the planner then refuses to sample outside a box that belongs to a
+# different place - silently, since nothing reports a sample rejected for being
+# out of bounds. If the robot's values are ever meant to become the repo's,
+# copy them the other way and commit, do not let a deploy do it by accident.
+gbplanner/config/anymal/gbplanner_config.yaml
+# Host paths (/home/arl/...) that only make sense on the robot.
+main.launch
+
+# --- built on the robot, for the robot's architecture ------------------------
+# 15 GB, and compiled for arm64. Overwriting it with an x86 build breaks the
+# installation the containers run from.
+bootstrap/
+# Produced by `make build-bridge` on the robot.
+bridge/ros-jazzy-ros1-bridge/
+# Staging copy that `make build-bridge` re-creates from planner_msgs/.
+bridge/custom_msgs/custom_msgs_ros1_ws/src/planner_msgs/
+
+# --- never useful across machines -------------------------------------------
+# No trailing slash: a submodule's .git is a FILE pointing at the parent repo's
+# modules directory, so a directory-only pattern lets it through.
+.git
+build/
+devel/
+install/
+logs/
+__pycache__/
+*.pyc
