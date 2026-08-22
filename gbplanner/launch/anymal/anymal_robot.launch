@@ -23,12 +23,27 @@
          fleet needs them distinguishable. -->
     <arg name="prefix" default="robot0"/>
 
+    <!-- External navigation goals the planner listens on. Relative, so it
+         resolves under /$(arg robot_name)/ - the same layout the sim preset
+         gives, so one publisher serves both. Scene graph goals still arrive:
+         gbplanner.launch relays its topic into this one. -->
+    <arg name="navigation_goal_topic" default="move_base_simple/goal"/>
+
+    <!-- Forwarded too, or they cannot be reached on the robot path: make
+         run-robot goes only through this file, so an arg declared solely in
+         gbplanner.launch is unreachable without editing that file. -->
+    <arg name="hydra_goal_topic" default="/hydra_ros_node/navigation/navigation_goals"/>
+    <arg name="hydra_goal_relay_en" default="false"/>
+
     <arg name="planner_en"   default="true"/>
     <arg name="tf_prefix_en" default="true"/>
 
     <include if="$(arg planner_en)"
              file="$(find gbplanner)/launch/anymal/gbplanner.launch">
         <arg name="robot_name" value="$(arg robot_name)"/>
+        <arg name="navigation_goal_topic" value="$(arg navigation_goal_topic)"/>
+        <arg name="hydra_goal_topic" value="$(arg hydra_goal_topic)"/>
+        <arg name="hydra_goal_relay_en" value="$(arg hydra_goal_relay_en)"/>
     </include>
 
     <include if="$(arg tf_prefix_en)"

@@ -22,6 +22,27 @@ LAUNCH_ARGS ?=
 # answering on /anymal/... locally while its frames become <prefix>/... globally.
 TF_PREFIX ?= $(NAMESPACE)
 
+# Free-form "name:=value" pairs appended to run-robot's roslaunch line, and the
+# only way to reach an arg of anymal_robot.launch: the recipe sets LAUNCH_ARGS
+# as a shell-level assignment, which always beats a LAUNCH_ARGS= given on the
+# command line.
+#
+# There is deliberately no per-argument knob beside this one. An arg named here
+# is passed on the roslaunch line and therefore BEATS the launch file's own
+# default, so a knob that merely repeats that default shadows it: change the
+# default in the launch file and the Makefile silently writes it back.
+#
+#   # let scene-graph goals into the planner's goal topic (off by default:
+#   # with it on, hydra and the ROS 2 stack are two drivers on one topic and
+#   # the planner obeys whichever goal landed last)
+#   make run-robot NAMESPACE=ANYmal_1 RUN_ROBOT_ARGS="hydra_goal_relay_en:=true"
+#
+#   # send the planner's goals somewhere other than move_base_simple/goal
+#   make run-robot NAMESPACE=ANYmal_1 RUN_ROBOT_ARGS="navigation_goal_topic:=/other/goal"
+#
+# Goes into a double-quoted shell word, so keep it to plain name:=value pairs.
+RUN_ROBOT_ARGS ?=
+
 # Package rebuilt by `make rebuild` / `make run-sim <ns> rebuild`.
 REBUILD_PKG ?= gbplanner
 
@@ -190,9 +211,9 @@ endif
 # host).
 # ---------------------------------------------------------------------------
 run-robot: ## Planner + TF prefixing on the robot: make run-robot NAMESPACE=robot0
-	@echo "gbplanner + tf prefix '$(TF_PREFIX)' on $(ROS_MASTER_URI) (ns /$(ROBOT_NAME))..."
+	@echo "gbplanner + tf prefix '$(TF_PREFIX)' on $(ROS_MASTER_URI) (ns /$(ROBOT_NAME))$(if $(RUN_ROBOT_ARGS), with $(RUN_ROBOT_ARGS),)..."
 	@LAUNCH_FILE=anymal_robot.launch \
-	 LAUNCH_ARGS="robot_name:=$(ROBOT_NAME) prefix:=$(TF_PREFIX)" \
+	 LAUNCH_ARGS="robot_name:=$(ROBOT_NAME) prefix:=$(TF_PREFIX) $(RUN_ROBOT_ARGS)" \
 	 $(COMPOSE) run --rm --no-deps --name gbplanner-robot-$(NAMESPACE) \
 	   $(ROS_NET_ARGS) run
 

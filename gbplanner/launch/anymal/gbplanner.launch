@@ -5,7 +5,8 @@
                 /mimosa_node/lidar/geometric/sm_cloud_ds
                 /elevation_mapping_lidar/elevation_map_raw
                 /anymal/drawn_rectangle              (untraversable polygon)
-                /hydra_ros_node/navigation/navigation_goals
+                /hydra_ros_node/navigation/navigation_goals   (only with
+                                             hydra_goal_relay_en:=true)
            out  /anymal/anymal/command/trajectory
            srv  /anymal/gbplanner, /anymal/gbplanner/homing, /anymal/gbplanner/*
                 /anymal/planner_control_interface/std_srvs/* -->
@@ -19,10 +20,32 @@
     <arg name="output_pointcloud_topic" default="/mimosa_node/lidar/geometric/sm_cloud_ds" unless="$(arg crop_pointcloud)"/>
     <arg name="output_pointcloud_topic" default="/mimosa_node/lidar/geometric/points_cropped" if="$(arg crop_pointcloud)"/>
 
-    <!-- Navigation goals coming from the scene graph stack. gbplanner3's PCI
-         reads external goals on /move_base_simple/goal (geometry_msgs/PoseStamped),
-         where the gbplanner2 pci_anymal read navigation/goals. -->
-    <arg name="navigation_goal_topic" default="/hydra_ros_node/navigation/navigation_goals"/>
+    <!-- External navigation goals (geometry_msgs/PoseStamped). Relative, so it
+         lands on /$(arg robot_name)/move_base_simple/goal - the same layout
+         sim_gbplanner.launch produces under its own namespace, so one publisher
+         works in sim and on the robot without knowing which it is talking to. -->
+    <arg name="navigation_goal_topic" default="move_base_simple/goal"/>
+
+    <!-- The scene graph stack publishes goals on its own topic instead, which
+         is where the gbplanner2 pci_anymal read them. OFF by default: with it
+         on, hydra is a second driver on the same topic as the ROS 2 stack and
+         the planner simply obeys whichever goal arrived last - not a name
+         clash, a second hand on the wheel. Off, this file has exactly the
+         shape of sim_gbplanner.launch: one goal topic, remapped onto both
+         consumers, nothing relaying into it.
+
+           make run-robot RUN_ROBOT_ARGS="hydra_goal_relay_en:=true"
+
+         turns it back on. Skipped anyway when the two topics are already the
+         same - a relay from a topic to itself would loop.
+
+         The guard resolves both names against the group namespace before
+         comparing. Comparing them as written is not enough: passing
+         hydra_goal_topic:=/anymal/move_base_simple/goal reads as different
+         from the relative default move_base_simple/goal, yet both resolve to
+         the same topic - and the relay would then feed itself. -->
+    <arg name="hydra_goal_topic" default="/hydra_ros_node/navigation/navigation_goals"/>
+    <arg name="hydra_goal_relay_en" default="false"/>
 
     <!-- Config files. They ship with the gbplanner package now, not with the
          anymal package, so swapping gbplanner does not touch anymal/config. -->
@@ -42,6 +65,11 @@
             <remap from="odometry" to="$(arg odometry_topic)" />
             <remap from="pointcloud" to="$(arg output_pointcloud_topic)" />
             <remap from="elevation_map" to="/elevation_mapping_lidar/elevation_map_raw" />
+            <!-- Same goal topic the PCI reads below. gbplanner.cpp subscribes it
+                 as "local_navigation_goal" and uses it to bias the RRG, where the
+                 PCI turns it into a go_to_waypoint call - sim_gbplanner.launch
+                 wires both to one topic, so keep the robot identical. -->
+            <remap from="local_navigation_goal" to="$(arg navigation_goal_topic)" />
             <remap from="/traversability_estimation/untraversable_polygon" to="drawn_rectangle" />
             <!-- rrg.cpp publishes /gbplanner_path with a hardcoded leading slash,
                  which escapes this group. Pull it back under the namespace so it
@@ -51,6 +79,7 @@
                  publishes it globally too. Remap both sides consistently. -->
             <remap from="/robot_status" to="robot_status" />
             <rosparam command="load" file="$(arg gbplanner_config_file)" />
+            
             <rosparam command="load" file="$(arg map_config_file)" />
             <param name="behavior_tree_path" value="$(arg behavior_tree_file)" />
         </node>
@@ -70,13 +99,22 @@
             <remap from="planner_homing_server" to="gbplanner_ros_homing" />
             <!-- External navigation goals. planner_control_interface.cpp subscribes
                  /move_base_simple/goal with a hardcoded leading slash. -->
-            <remap from="/move_base_simple/goal" to="$(arg navigation_goal_topic)" />
+            <remap from="/move_base_simple/goal" to="$(arg navigation_goal_topic)"/>
             <!-- Same hardcoded-global-topic class as above, in pci_general.cpp. -->
             <remap from="/gbplanner_path" to="gbplanner_path" />
             <remap from="/gbplanner_is_homing" to="gbplanner_is_homing" />
             <remap from="/robot_status" to="robot_status" />
             <rosparam command="load" file="$(arg pci_file)" />
         </node>
+
+        <!-- Scene graph goals -> the planner's goal topic. topic_tools ships
+             with the ros:noetic base image. relay takes its two names
+             positionally: input first, output second, both resolved against
+             this node's namespace, so a relative output stays under
+             /$(arg robot_name)/. -->
+        <node pkg="topic_tools" type="relay" name="hydra_goal_relay" output="screen"
+              args="$(arg hydra_goal_topic) $(arg navigation_goal_topic)"
+              if="$(eval hydra_goal_relay_en and (hydra_goal_topic if hydra_goal_topic.startswith('/') else '/' + robot_name + '/' + hydra_goal_topic) != (navigation_goal_topic if navigation_goal_topic.startswith('/') else '/' + robot_name + '/' + navigation_goal_topic))"/>
 
         <!-- Constrained fov for the lidar.
              constrained_fov.py does not exist in this gbplanner. Left disabled;
