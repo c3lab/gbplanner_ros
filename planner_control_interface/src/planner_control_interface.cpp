@@ -1113,6 +1113,9 @@ void PlannerControlInterface::runSearch(bool exe_path) {
   plan_req->use_current_state = use_current_state_;
   plan_req->bound_mode = bound_mode_;
 
+  {
+    // Held only for the copy, not across the service call below.
+    std::lock_guard<std::mutex> lock(setpoint_mutex_);
   if (!use_current_state_) {
     plan_req->source.position.x = source_setpoint_.position.x;
     plan_req->source.position.y = source_setpoint_.position.y;
@@ -1137,6 +1140,7 @@ void PlannerControlInterface::runSearch(bool exe_path) {
   plan_req->target.orientation.y = target_setpoint_.orientation.y;
   plan_req->target.orientation.z = target_setpoint_.orientation.z;
   plan_req->target.orientation.w = target_setpoint_.orientation.w;
+  }
 
   auto plan_res = callService(planner_search_client_, plan_req);
   if (plan_res) {
@@ -1423,6 +1427,9 @@ void PlannerControlInterface::initIMarker() {
 void PlannerControlInterface::processFeedback(
     visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr
         feedback) {
+  // The reader in runSearch copies these field by field; without the lock it can
+  // observe a position from before the update and an orientation from after.
+  std::lock_guard<std::mutex> lock(setpoint_mutex_);
   if (!feedback->marker_name.compare(source_marker_name)) {
     // update source wp.
     source_setpoint_.position.x = feedback->pose.position.x;

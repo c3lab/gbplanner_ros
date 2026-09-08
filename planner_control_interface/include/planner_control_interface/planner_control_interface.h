@@ -1,6 +1,7 @@
 #ifndef PLANNER_CONTROL_INTERFACE_H_
 #define PLANNER_CONTROL_INTERFACE_H_
 
+#include <mutex>
 #include <eigen3/Eigen/Dense>
 #include <geometry_msgs/msg/point32.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -298,6 +299,14 @@ class PlannerControlInterface {
   bool use_current_state_;
   const std::string source_marker_name = "wp_source";
   const std::string target_marker_name = "wp_target";
+  // Written field by field from the interactive-marker feedback callback and
+  // read field by field from runSearch. InteractiveMarkerServer takes node
+  // interfaces, not a callback group, so its feedback subscription lands in the
+  // node's default group and can run while the run timer is in flight - the two
+  // could not overlap under ROS 1's single spin thread. A callback group is the
+  // wrong tool here: it would serialise the marker, which has to stay responsive
+  // while the planner works. Guard the data instead.
+  std::mutex setpoint_mutex_;
   geometry_msgs::msg::Pose source_setpoint_;
   geometry_msgs::msg::Pose target_setpoint_;
   std::shared_ptr<interactive_markers::InteractiveMarkerServer> imarker_server_;
