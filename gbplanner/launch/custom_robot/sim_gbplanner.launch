@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<!-- Simulation preset. Identical to deploy_gbplanner.launch except for the
+     defaults marked [sim] below: the topic names the Gazebo/ROS 2 sim exposes
+     through the ros1_bridge, and use_sim_time on (the sim owns /clock).
+     Keep the two files in sync when either one changes. -->
+<launch>
+  <!-- ============ Robot identity ============ -->
+  <arg name="namespace" default="my_robot"/>
+
+  <!-- ============ Clock source ============ -->
+  <!-- true = read time from /clock (ros1_bridge forwarding ROS2 sim clock).
+       Must be set before any node starts - root-level param, not namespaced,
+       since roscpp checks the global "/use_sim_time" key. -->
+  <arg name="use_sim_time" default="true"/> <!-- [sim] -->
+  <param name="use_sim_time" value="$(arg use_sim_time)"/>
+
+  <!-- ============ Sim topics - edit these per robot ============ -->
+  <arg name="odometry_topic"           default="sensor_measurements/odom"/>          <!-- [sim] -->
+  <arg name="pointcloud_topic"         default="sensor_measurements/lidar/points"/>  <!-- [sim] -->
+  <arg name="command_trajectory_topic" default="command/trajectory"/>    <!-- robot's real trajectory input topic -->
+  <!-- Relative (no leading slash) so it resolves under /$(arg namespace)/ -
+       keeps multiple robots from sharing one global RViz nav goal. -->
+  <arg name="local_navigation_goal_topic" default="move_base_simple/goal"/>
+
+  <!-- ============ Config files ============ -->
+  <arg name="config_folder" default="$(find gbplanner)/config/custom_robot"/>
+  <arg name="gbplanner_config_file" default="$(arg config_folder)/gbplanner_config.yaml"/>
+  <arg name="pci_file"              default="$(arg config_folder)/planner_control_interface_config.yaml"/>
+  <arg name="voxblox_config_file"   default="$(arg config_folder)/voxblox_config.yaml"/>
+  <arg name="behavior_tree_file"    default="$(arg config_folder)/main_tree.xml"/>
+  <arg name="rviz_config"           default="$(arg config_folder)/ui.rviz"/>
+
+  <arg name="rviz_en" default="true"/>
+  <arg name="launch_prefix" default=""/> <!-- e.g. gdb -ex run //args -->
+
+  <!-- Everything below is pushed into /$(arg namespace)/... -
+       topics AND services both get the prefix automatically. -->
+  <group ns="$(arg namespace)">
+
+    <!-- Graph based planning -->
+    <node pkg="gbplanner" type="gbplanner_node" name="gbplanner_node" output="screen" launch-prefix="$(arg launch_prefix)">
+      <remap from="odometry"              to="$(arg odometry_topic)"/>
+      <remap from="pointcloud"            to="$(arg pointcloud_topic)"/>
+      <remap from="local_navigation_goal" to="$(arg local_navigation_goal_topic)"/>
+      <rosparam command="load" file="$(arg gbplanner_config_file)"/>
+      <rosparam command="load" file="$(arg voxblox_config_file)"/>
+      <param name="behavior_tree_path" value="$(arg behavior_tree_file)"/>
+    </node>
+
+    <!-- Planner and Control Interface -->
+    <node pkg="pci_general" type="pci_general_ros_node" name="pci_general_ros_node" output="screen">
+      <remap from="command/trajectory"     to="$(arg command_trajectory_topic)"/>
+      <remap from="planner_server"         to="gbplanner_ros"/>
+      <remap from="planner_homing_server"  to="gbplanner/homing"/>
+      <remap from="odometry"               to="$(arg odometry_topic)"/>
+      <!-- pci_general.cpp hardcodes these 3 publishers with a leading slash
+           (absolute/global) - bypasses the namespace group entirely, same bug
+           class as /pointcloud earlier. Remap back under $(arg namespace). -->
+      <remap from="/gbplanner_path"        to="gbplanner_path"/>
+      <remap from="/gbplanner_is_homing"   to="gbplanner_is_homing"/>
+      <remap from="/robot_status"          to="robot_status"/>
+      <!-- planner_control_interface.cpp also subscribes /move_base_simple/goal
+           with a hardcoded leading slash - same bug class. -->
+      <remap from="/move_base_simple/goal" to="$(arg local_navigation_goal_topic)"/>
+      <rosparam command="load" file="$(arg pci_file)"/>
+    </node>
+
+    <!-- Rviz -->
+    <node if="$(arg rviz_en)" pkg="rviz" type="rviz" name="gbplanner_ui" output="screen" args="-d $(arg rviz_config)">
+      <!-- gbplanner_ui.cpp hardcodes these 5 service clients with a leading
+           slash (absolute/global), but the servers are advertised relative
+           (so live under /$(arg namespace)/...) - remap to match. -->
+      <remap from="/planner_control_interface/std_srvs/automatic_planning" to="planner_control_interface/std_srvs/automatic_planning"/>
+      <remap from="/planner_control_interface/std_srvs/single_planning"    to="planner_control_interface/std_srvs/single_planning"/>
+      <remap from="/planner_control_interface/std_srvs/stop"               to="planner_control_interface/std_srvs/stop"/>
+      <remap from="/planner_control_interface/std_srvs/homing_trigger"     to="planner_control_interface/std_srvs/homing_trigger"/>
+      <remap from="/planner_control_interface/std_srvs/go_to_waypoint"     to="planner_control_interface/std_srvs/go_to_waypoint"/>
+    </node>
+
+  </group>
+</launch>
