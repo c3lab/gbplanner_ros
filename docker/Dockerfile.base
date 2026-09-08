@@ -142,9 +142,16 @@ RUN mkdir -p /opt/deps_ws/src \
              /opt/deps_ws/src/mav_comm/mav_comm/COLCON_IGNORE \
     && source /opt/ros/${ROS_DISTRO}/setup.bash \
     && cd /opt/deps_ws \
+    # BUILD_SHARED_LIBS=ON is not optional. voxblox's CMake uses
+    # ament_auto_add_library with no explicit type, so it follows this variable,
+    # which CMake defaults to OFF. Static archives here mean two things: a
+    # downstream shared library fails with "relocation R_X86_64_PC32 ... recompile
+    # with -fPIC", and an executable in another package gets hundreds of undefined
+    # references because the archives' transitive dependencies are not propagated.
     && colcon build \
          --merge-install \
-         --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -Wno-dev \
+         --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+                      -DBUILD_SHARED_LIBS=ON -Wno-dev \
     && rm -rf /opt/deps_ws/build /opt/deps_ws/log /tmp/image_deps.repos
 
 # Bootstrap/dev containers are --rm (ephemeral): known_hosts never persists, so

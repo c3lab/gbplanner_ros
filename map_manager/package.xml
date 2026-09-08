@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
-<package format="2">
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
   <name>map_manager</name>
   <version>1.0.0</version>
   <description>Wrappers for mapping framework</description>
@@ -9,21 +10,17 @@
 
   <license>TODO</license>
 
-  <buildtool_depend>catkin</buildtool_depend>
-  <depend>message_generation</depend>
-  <depend>sensor_msgs</depend>
-  <depend>std_msgs</depend>
-  <depend>tf</depend>
-  <depend>geometry_msgs</depend>
-  <depend>visualization_msgs</depend>
-  <depend>nav_msgs</depend>
-  <depend>voxblox_ros</depend>
-  <depend>planner_msgs</depend>
-  <depend>planner_semantic_msgs</depend>
-  <depend>roscpp_serialization</depend>
-  <depend>pcl_conversions</depend>
-  <depend>pcl_ros</depend>
-  <depend>tf2_ros</depend>
-  <depend>planner_common</depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <depend>rclcpp</depend>
+  <depend>voxblox</depend>
+  <depend>voxblox_ros</depend>
+  <depend>planner_common</depend>
+  <depend>eigen</depend>
+  <depend>libpcl-all-dev</depend>
+  <depend>libgoogle-glog-dev</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
 </package>

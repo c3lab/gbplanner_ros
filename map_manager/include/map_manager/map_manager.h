@@ -11,7 +11,7 @@ class MapManager {
  public:
   
 
-  MapManager(ros::NodeHandle& nh, ros::NodeHandle& nh_private);
+  MapManager(rclcpp::Node* node);
 
   double getResolution();
   bool getStatus();
@@ -85,9 +85,8 @@ class MapManager {
   void setLineCheckMethod(int m);
 
  private:
-  ros::NodeHandle nh_;
-  ros::NodeHandle nh_private_;
-
+  // The ROS 1 node handles were stored but never read after construction, so
+  // the ROS 2 node pointer is only forwarded to the implementation.
   std::shared_ptr<MapManagerVoxblox<MapManagerVoxbloxServer, MapManagerVoxbloxVoxel>> map_manager_impl_;
 };
 

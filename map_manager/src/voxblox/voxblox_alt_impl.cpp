@@ -865,3 +865,28 @@ void MapManagerVoxblox<SDFServerType, SDFVoxelType>::getScanStatusIterative(
   gain_log =
       std::make_tuple(num_unknown_voxels, num_free_voxels, num_occupied_voxels);
 }
+
+// Companion to the class-level explicit instantiation in
+// voxblox_common_impl.cpp, which cannot see these four definitions.
+template VoxelStatus
+MapManagerVoxblox<MapManagerVoxbloxServer, MapManagerVoxbloxVoxel>::getBoxStatus(
+    const Eigen::Vector3d&, const Eigen::Vector3d&, bool);
+template VoxelStatus
+MapManagerVoxblox<MapManagerVoxbloxServer,
+                  MapManagerVoxbloxVoxel>::getPathStatus(const Eigen::Vector3d&,
+                                                         const Eigen::Vector3d&,
+                                                         const Eigen::Vector3d&,
+                                                         bool);
+template void
+MapManagerVoxblox<MapManagerVoxbloxServer, MapManagerVoxbloxVoxel>::getScanStatus(
+    Eigen::Vector3d&, std::vector<Eigen::Vector3d>&, std::tuple<int, int, int>&,
+    std::vector<std::pair<Eigen::Vector3d, VoxelStatus>>&, SensorParamsBase&);
+template void MapManagerVoxblox<
+    MapManagerVoxbloxServer,
+    MapManagerVoxbloxVoxel>::getScanStatusIterative(Eigen::Vector3d&,
+                                                    std::vector<Eigen::Vector3d>&,
+                                                    std::tuple<int, int, int>&,
+                                                    std::vector<std::pair<
+                                                        Eigen::Vector3d,
+                                                        VoxelStatus>>&,
+                                                    SensorParamsBase&);

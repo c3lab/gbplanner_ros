@@ -5,11 +5,11 @@
 #include <cmath>  // for PI
 #include <cstdint>
 #include <iomanip>
+#include <memory>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <pcl_conversions/pcl_conversions.h>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 #include <voxblox/interpolator/interpolator.h>
 #include <voxblox/utils/layer_utils.h>
 #include <voxblox/utils/planning_utils.h>
@@ -124,8 +124,7 @@ struct hash<Eigen::Matrix<Scalar, Rows, Cols>> {
 template <typename SDFServerType, typename SDFVoxelType>
 class MapManagerVoxblox {
  public:
-  MapManagerVoxblox(ros::NodeHandle& nh,
-                    ros::NodeHandle& nh_private);
+  MapManagerVoxblox(rclcpp::Node* node);
 
   double getResolution();
   bool getStatus();
@@ -225,10 +224,14 @@ class MapManagerVoxblox {
   bool checkUnknownStatus(const SDFVoxelType*);
   void clearIfUnknown(SDFVoxelType& voxel);
 
+  // Kept for the logging sites outside the constructor; the voxblox server
+  // owns no back-pointer we could borrow.
+  rclcpp::Node* node_;
+
   SDFServerType sdf_server_;
   voxblox::Layer<SDFVoxelType>* sdf_layer_;
 
-  voxblox::Interpolator<SDFVoxelType>* interpolator_;
+  std::unique_ptr<voxblox::Interpolator<SDFVoxelType>> interpolator_;
 
   // multiplier of a single voxel size to consider as a distance metric for
   // occupancy threshold
@@ -251,8 +254,7 @@ class MapManagerVoxblox {
   int line_status_method_;
 };
 
-// Helper
-template class MapManagerVoxblox<MapManagerVoxbloxServer,
-                                 MapManagerVoxbloxVoxel>;
+// The explicit instantiation lives in voxblox_common_impl.cpp; emitting it from
+// the header would duplicate it in every translation unit that includes this.
 
 #endif

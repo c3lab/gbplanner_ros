@@ -16,66 +16,78 @@ MapManagerVoxblox<voxblox::EsdfServer, voxblox::EsdfVoxel>::getSDFLayer() {
 
 template <typename SDFServerType, typename SDFVoxelType>
 MapManagerVoxblox<SDFServerType, SDFVoxelType>::MapManagerVoxblox(
-    ros::NodeHandle& nh, ros::NodeHandle& nh_private)
-    : sdf_server_(nh, nh_private),
+    rclcpp::Node* node)
+    : node_(node),
+      sdf_server_(node),
       occupancy_distance_voxelsize_factor_(1.0F) {
   sdf_layer_ = getSDFLayer();
   CHECK_NOTNULL(sdf_layer_);
-  interpolator_ = new voxblox::Interpolator<SDFVoxelType>(sdf_layer_);
+  interpolator_ =
+      std::make_unique<voxblox::Interpolator<SDFVoxelType>>(sdf_layer_);
 
-  // Get local parameters from passed nodehandle
-  if (!nh_private.getParam("occupancy_distance_voxelsize_factor",
-                           occupancy_distance_voxelsize_factor_)) {
-    ROS_INFO_COND(global_verbosity >= Verbosity::INFO,
-                  "MapManagerVoxblox: failed to find parameter for "
-                  "occupancy_distance_voxelsize_factor, using default of: %f",
-                  occupancy_distance_voxelsize_factor_);
+  // Get local parameters from the passed node. rclcpp has no float parameter
+  // type, so the read goes through a double and narrows into the float member.
+  double occupancy_distance_voxelsize_factor =
+      static_cast<double>(occupancy_distance_voxelsize_factor_);
+  if (getParamOpt(node_, "occupancy_distance_voxelsize_factor",
+                  occupancy_distance_voxelsize_factor)) {
+    occupancy_distance_voxelsize_factor_ =
+        static_cast<float>(occupancy_distance_voxelsize_factor);
+  } else {
+    RCLCPP_INFO_EXPRESSION(
+        node_->get_logger(), global_verbosity >= Verbosity::INFO,
+        "MapManagerVoxblox: failed to find parameter for "
+        "occupancy_distance_voxelsize_factor, using default of: %f",
+        occupancy_distance_voxelsize_factor_);
   }
 
   // Setup E/TsdfIntegratorBase::Config and object separately (also called in
-  // e/tsdf_server_ ctor)
-  tsdf_integrator_config_ =
-      voxblox::getTsdfIntegratorConfigFromRosParam(nh_private);
-  esdf_integrator_config_ =
-      voxblox::getEsdfIntegratorConfigFromRosParam(nh_private);
+  // e/tsdf_server_ ctor). The declarations the server already made are kept by
+  // the has_parameter guards inside these helpers, so the second read is safe.
+  tsdf_integrator_config_ = voxblox::getTsdfIntegratorConfigFromRosParam(node_);
+  esdf_integrator_config_ = voxblox::getEsdfIntegratorConfigFromRosParam(node_);
 
 #if (COL_CHECK_METHOD == 0)
-  ROS_INFO_COND(global_verbosity >= Verbosity::INFO,
-                "[MapManager]: Point collision checking method: Box check");
+  RCLCPP_INFO_EXPRESSION(
+      node_->get_logger(), global_verbosity >= Verbosity::INFO,
+      "[MapManager]: Point collision checking method: Box check");
 #elif (COL_CHECK_METHOD == 1)
-  ROS_INFO_COND(global_verbosity >= Verbosity::INFO,
-                "[MapManager]: Point collision checking method: Direct T/ESDF");
+  RCLCPP_INFO_EXPRESSION(
+      node_->get_logger(), global_verbosity >= Verbosity::INFO,
+      "[MapManager]: Point collision checking method: Direct T/ESDF");
 #elif (COL_CHECK_METHOD == 2)
-  ROS_INFO_COND(
-      global_verbosity >= Verbosity::INFO,
+  RCLCPP_INFO_EXPRESSION(
+      node_->get_logger(), global_verbosity >= Verbosity::INFO,
       "[MapManager]: Point collision checking method: Interpolated T/ESDF");
 #endif
 
 #if (EDGE_CHECK_METHOD == 0)
-  ROS_INFO_COND(
-      global_verbosity >= Verbosity::INFO,
+  RCLCPP_INFO_EXPRESSION(
+      node_->get_logger(), global_verbosity >= Verbosity::INFO,
       "[MapManager]: Line collision checking method: Multiple box checks");
 #elif (EDGE_CHECK_METHOD == 1)
-  ROS_INFO_COND(
-      global_verbosity >= Verbosity::INFO,
+  RCLCPP_INFO_EXPRESSION(
+      node_->get_logger(), global_verbosity >= Verbosity::INFO,
       "[MapManager]: Line collision checking method: Cuboid around the");
 #elif (EDGE_CHECK_METHOD == 2)
-  ROS_INFO_COND(
-      global_verbosity >= Verbosity::INFO,
+  RCLCPP_INFO_EXPRESSION(
+      node_->get_logger(), global_verbosity >= Verbosity::INFO,
       "[MapManager]: Line collision checking method: Direct T/ESDF check");
 #elif (EDGE_CHECK_METHOD == 3)
-  ROS_INFO_COND(
-      global_verbosity >= Verbosity::INFO,
+  RCLCPP_INFO_EXPRESSION(
+      node_->get_logger(), global_verbosity >= Verbosity::INFO,
       "[MapManager]: Line collision checking method: Interpolated T/ESDF "
       "check");
 #endif
 
 #if (RAY_CAST_METHOD == 0)
-  ROS_INFO_COND(global_verbosity >= Verbosity::INFO,
-                "[MapManager]: Ray casting method: Original");
+  RCLCPP_INFO_EXPRESSION(node_->get_logger(),
+                         global_verbosity >= Verbosity::INFO,
+                         "[MapManager]: Ray casting method: Original");
 #elif (RAY_CAST_METHOD == 1)
-  ROS_INFO_COND(global_verbosity >= Verbosity::INFO,
-                "[MapManager]: Ray casting method: Iterative");
+  RCLCPP_INFO_EXPRESSION(node_->get_logger(),
+                         global_verbosity >= Verbosity::INFO,
+                         "[MapManager]: Ray casting method: Iterative");
 #endif
 }
 
@@ -466,7 +478,8 @@ void MapManagerVoxblox<SDFServerType, SDFVoxelType>::getFreeSpacePointCloud(
 
 template <typename SDFServerType, typename SDFVoxelType>
 void MapManagerVoxblox<SDFServerType, SDFVoxelType>::augmentFreeFrustum() {
-  ROS_WARN_THROTTLE(5.0, "MapManagerVoxblox::augmentFreeFrustum: N/A");
+  RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 5000,
+                       "MapManagerVoxblox::augmentFreeFrustum: N/A");
 }
 
 template <typename SDFServerType, typename SDFVoxelType>
@@ -474,7 +487,7 @@ void MapManagerVoxblox<SDFServerType, SDFVoxelType>::extractLocalMap(
     const Eigen::Vector3d& center, const Eigen::Vector3d& bounding_box_size,
     std::vector<Eigen::Vector3d>& occupied_voxels,
     std::vector<Eigen::Vector3d>& free_voxels) {
-  // ROS_WARN_THROTTLE(5.0,
+  // RCLCPP_WARN_THROTTLE(5.0,
   //                   "MapManagerVoxblox::extractLocalMap --> Temporary
   //                   solution " "to be consistent with Octomap interface.");
   occupied_voxels.clear();
@@ -948,3 +961,11 @@ void MapManagerVoxblox<SDFServerType, SDFVoxelType>::getCameraScanStatus(
   gain_log =
       std::make_tuple(num_unknown_voxels, num_free_voxels, num_occupied_voxels);
 }
+
+// Explicit instantiation of everything defined above. Members defined in
+// voxblox_alt_impl.cpp are instantiated at the end of that file instead: an
+// explicit instantiation only covers the members whose definitions are visible
+// where it appears, and the specialization may be instantiated only once in the
+// whole program.
+template class MapManagerVoxblox<MapManagerVoxbloxServer,
+                                 MapManagerVoxbloxVoxel>;
