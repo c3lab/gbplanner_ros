@@ -127,7 +127,21 @@ enter-dev: ## Attach a shell to the running dev container
 	@docker exec -it $(CONTAINER_NAME)-dev bash
 
 stop: ## Stop and remove any running gbplanner containers
-	@$(COMPOSE) down
+	@# `compose down` only removes the services of this project. Containers
+	@# started by `compose run` are one-off, get generated names, and survive it -
+	@# and because every service uses network_mode: host with the same
+	@# ROS_DOMAIN_ID, a survivor keeps publishing on the same topics as the next
+	@# run. RViz then shows two alternating streams, which looks like a flickering
+	@# display rather than a leftover process.
+	@$(COMPOSE) down --remove-orphans
+	@docker ps -a --filter "name=$(CONTAINER_NAME)-" --format '{{.ID}}' | xargs -r docker rm -f >/dev/null
+	@echo "Remaining $(CONTAINER_NAME) containers: $$(docker ps -a --filter "name=$(CONTAINER_NAME)-" --format '{{.ID}}' | wc -l)"
+
+ps: ## Show what this repo currently has running
+	@echo "Containers:"
+	@docker ps --filter "name=$(CONTAINER_NAME)" --format '  {{.Names}}	{{.Status}}' || true
+	@echo "ROS processes on the host (a live one competes on the DDS domain):"
+	@pgrep -af '[g]bplanner_node|[p]ci_general_ros_node|[g]z sim' | cut -c1-100 | sed 's/^/  /' || echo "  none"
 
 clean: stop ## Stop containers and remove the built image
 	@echo "Cleaning up $(IMAGE_NAME):$(ROS_DISTRO)-$(GBPLANNER3_VERSION) container image..."
@@ -139,4 +153,4 @@ help: ## Show this help message
 	@echo "Targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "} {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: build bootstrap build-ws build-all rebuild run-dev run run-sim stop-sim enter-dev stop clean help
+.PHONY: build bootstrap build-ws build-all rebuild run-dev run run-sim stop-sim enter-dev stop ps clean help
