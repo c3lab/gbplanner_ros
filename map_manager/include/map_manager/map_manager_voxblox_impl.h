@@ -1,6 +1,7 @@
 #ifndef MAP_MANAGER_VOXBLOX_IMPL_H_
 #define MAP_MANAGER_VOXBLOX_IMPL_H_
 
+#include <shared_mutex>
 #include <algorithm>
 #include <cmath>  // for PI
 #include <cstdint>
@@ -194,6 +195,8 @@ class MapManagerVoxblox {
   }
 
   void resetMap() { sdf_server_.clear(); }
+
+  std::shared_mutex& getMapMutex() { return sdf_server_.getMapMutex(); }
 
   pcl::PointXYZI eigenVec3dToPCLPoint(Eigen::Vector3d& vec);
 

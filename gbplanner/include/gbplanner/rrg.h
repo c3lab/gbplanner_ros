@@ -5,6 +5,8 @@
 #include <fstream>
 #include <iostream>
 #include <list>
+#include <mutex>
+#include <shared_mutex>
 #include <numeric>
 #include <unordered_map>
 
@@ -229,6 +231,12 @@ class Rrg {
   void addGeofenceAreas(const geometry_msgs::msg::PolygonStamped& polygon_msgs);
   void clearUntraversableZones();
   void setState(StateVec& state);
+
+  // Snapshot of the pose under state_mutex_. A planning cycle takes one copy at
+  // the start and uses it throughout: ROS 1's single spin thread froze the pose
+  // for the whole cycle, and reading the live member per query would instead
+  // build a graph from a root that drifts while it is being built.
+  StateVec getCurrentState() const;
   void setBoundMode(BoundModeType bmode);
   void setRootMode(bool plan_ahead);
   void setGlobalFrame(std::string frame_id);
@@ -741,6 +749,12 @@ class Rrg {
   Vertex* best_vertex_;
 
   // Current state of the robot, updated from odometry.
+  // Written by the odometry callback, read by every planning cycle. Deliberately
+  // NOT the same lock as the TSDF layer's: a planning cycle holds the map lock
+  // for its whole duration, and if odometry needed that lock to record a pose it
+  // could not refresh during the wait in runGlobalPlanner - which is the entire
+  // point of that wait.
+  mutable std::mutex state_mutex_;
   StateVec current_state_;
   StateVec state_for_planning_;
   double cam_pitch_;

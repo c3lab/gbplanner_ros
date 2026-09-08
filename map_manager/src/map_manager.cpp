@@ -5,6 +5,10 @@ MapManager::MapManager(rclcpp::Node* node)
   map_manager_impl_ = std::make_shared<MapManagerVoxblox<MapManagerVoxbloxServer, MapManagerVoxbloxVoxel>>(node);
 }
 
+std::shared_mutex& MapManager::getMapMutex() {
+  return map_manager_impl_->getMapMutex();
+}
+
 double MapManager::getResolution()
 {
   return map_manager_impl_->getResolution();

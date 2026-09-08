@@ -1,6 +1,7 @@
 #ifndef MAP_MANAGER_H_
 #define MAP_MANAGER_H_
 
+#include <shared_mutex>
 #include "map_manager/map_manager_utils.h"
 
 #include "map_manager/map_manager_voxblox_impl.h"
@@ -12,6 +13,18 @@ class MapManager {
   
 
   MapManager(rclcpp::Node* node);
+
+  // The TSDF layer's lock, owned by the voxblox server underneath. Exposed
+  // because the consumers that need it are outside this class: a planning cycle
+  // takes it shared for its whole duration, so the map cannot change underneath
+  // a graph while it is being built, and the odometry path takes it exclusive
+  // for the two calls that mutate the map.
+  //
+  // Nothing inside map_manager takes it. Locking each public method looked
+  // right and is not: checkUnknownStatus alone is called from 21 places inside
+  // the implementation, and a nested shared_lock on the same thread is
+  // undefined behaviour the moment a writer starts waiting between the two.
+  std::shared_mutex& getMapMutex();
 
   double getResolution();
   bool getStatus();

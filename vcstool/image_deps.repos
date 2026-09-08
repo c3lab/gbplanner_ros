@@ -14,7 +14,11 @@ repositories:
     # commits). Without it, clearing_ray_weight_factor is ignored and TSDF colour
     # blending is live, which silently carves obstacles out of the map and breaks
     # map_manager's camera-annotation flag. See docs/VOXBLOX_FORK.md.
-    version: gbplanner
+    # Pinned to a commit, not the branch tip. Docker caches the layer that runs
+    # vcs import, and a branch name gives it nothing to notice when the remote
+    # moves - the image silently keeps the old sources. A commit here changes
+    # this file, which invalidates the layer, and makes the image reproducible.
+    version: 19767a71e470e7bc49c798cc8198853e753aff49
   mav_comm:
     type: git
     url: https://github.com/ethz-asl/mav_comm.git

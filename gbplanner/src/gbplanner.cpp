@@ -135,9 +135,18 @@ void Gbplanner::initializeAttributes() {
           [this](const geometry_msgs::msg::PoseStamped& msg) {
             poseStampedCallback(msg);
           });
+  // Odometry gets its own mutually-exclusive group so it can run while a
+  // planning callback is in flight. Everything else stays in the node's default
+  // group, which keeps voxblox's own integration callbacks mutually exclusive
+  // with the planner's map reads exactly as a single spin thread did.
+  odometry_cb_group_ =
+      node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  rclcpp::SubscriptionOptions odometry_options;
+  odometry_options.callback_group = odometry_cb_group_;
   odometry_subscriber_ = node_->create_subscription<nav_msgs::msg::Odometry>(
       "odometry", 100,
-      [this](const nav_msgs::msg::Odometry& msg) { odometryCallback(msg); });
+      [this](const nav_msgs::msg::Odometry& msg) { odometryCallback(msg); },
+      odometry_options);
   robot_status_subcriber_ =
       node_->create_subscription<planner_msgs::msg::RobotStatus>(
           "/robot_status", 1, [this](const planner_msgs::msg::RobotStatus& msg) {

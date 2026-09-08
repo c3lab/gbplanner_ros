@@ -29,15 +29,21 @@ int main(int argc, char** argv) {
 
   GbplannerRos planner(node.get());
 
-  // SingleThreadedExecutor with everything in the node's default (mutually
-  // exclusive) callback group: the ROS 1 node was a bare ros::spin(), every
-  // graph/map/state mutation here is unguarded, and the voxblox server that
-  // MapManager embeds registers its own callbacks on this same node, so any
-  // multi-threaded executor would let map integration run concurrently with the
-  // planner's map reads.  No callback blocks on another callback -- the only
-  // two synchronous service calls in the ROS 1 code (land_srv) discarded their
-  // response and are now fire-and-forget.
-  rclcpp::executors::SingleThreadedExecutor executor;
+  // Two threads, two groups. Everything except odometry stays in the node's
+  // default mutually-exclusive group, which keeps the planner's map reads and
+  // the voxblox integration callbacks that MapManager registers on this same
+  // node from ever overlapping - the property a single ros::spin() gave for
+  // free, and which matters because the map is not thread-safe.
+  //
+  // Odometry alone sits in its own group. runGlobalPlanner waits three seconds
+  // specifically so a fresher pose arrives, and under a single-threaded
+  // executor nothing could deliver one: the wait was pure delay. setState only
+  // takes state_mutex_ for the pose, so it now runs during that wait without
+  // touching anything the planning callback holds.
+  //
+  // Two threads, not more: a third would have nothing to run, since every other
+  // callback is in one mutually-exclusive group.
+  rclcpp::executors::MultiThreadedExecutor executor(rclcpp::ExecutorOptions(), 2);
   executor.add_node(node);
   executor.spin();
 

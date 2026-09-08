@@ -157,6 +157,7 @@ class Gbplanner {
       pose_subscriber_;
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr
       pose_stamped_subscriber_;
+  rclcpp::CallbackGroup::SharedPtr odometry_cb_group_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_subscriber_;
   rclcpp::Subscription<geometry_msgs::msg::PolygonStamped>::SharedPtr
       untraversable_polygon_subscriber_;

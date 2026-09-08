@@ -1785,6 +1785,11 @@ void Rrg::expandGraph2(std::shared_ptr<GraphManager> graph_manager,
 }
 
 Rrg::GraphStatus Rrg::batchGraph(){
+  // Shared for the whole cycle: the map must not change under a graph while it
+  // is being built. One acquisition per cycle rather than one per query - the
+  // RRG does thousands - and it nests nowhere, because nothing inside
+  // map_manager locks.
+  std::shared_lock<std::shared_mutex> map_lock(map_manager_->getMapMutex());
   int loop_count = 0;
   int num_vertices = 1;
   int num_edges = 0;
@@ -1961,6 +1966,11 @@ Rrg::GraphStatus Rrg::batchGraph(){
 }
 
 Rrg::GraphStatus Rrg::buildGraph() {
+  // Shared for the whole cycle: the map must not change under a graph while it
+  // is being built. One acquisition per cycle rather than one per query - the
+  // RRG does thousands - and it nests nowhere, because nothing inside
+  // map_manager locks.
+  std::shared_lock<std::shared_mutex> map_lock(map_manager_->getMapMutex());
   int loop_count = 0;
   int num_vertices = 1;
   int num_edges = 0;
@@ -3465,6 +3475,11 @@ void Rrg::printShortestPath(int id) {
 bool Rrg::search(geometry_msgs::msg::Pose source_pose,
                  geometry_msgs::msg::Pose target_pose, bool use_current_state,
                  std::vector<geometry_msgs::msg::Pose>& path_ret) {
+  // Shared for the whole cycle: the map must not change under a graph while it
+  // is being built. One acquisition per cycle rather than one per query - the
+  // RRG does thousands - and it nests nowhere, because nothing inside
+  // map_manager locks.
+  std::shared_lock<std::shared_mutex> map_lock(map_manager_->getMapMutex());
   StateVec source;
   if (use_current_state)
     source = current_state_;
@@ -5160,6 +5175,11 @@ void Rrg::getFrontiers(bool skip_gain_refresh,
 }
 
 std::vector<geometry_msgs::msg::Pose> Rrg::getHomingPath(std::string tgt_frame) {
+  // Shared for the whole cycle: the map must not change under a graph while it
+  // is being built. One acquisition per cycle rather than one per query - the
+  // RRG does thousands - and it nests nowhere, because nothing inside
+  // map_manager locks.
+  std::shared_lock<std::shared_mutex> map_lock(map_manager_->getMapMutex());
   std::vector<geometry_msgs::msg::Pose> ret_path;
   ret_path = searchHomingPath(tgt_frame, current_state_);
   if (ret_path.size() < 1) return ret_path;
@@ -6618,6 +6638,11 @@ void Rrg::generateGridSamples(std::vector<int> &viewpoint_ids) {
 }
 
 std::vector<geometry_msgs::msg::Pose> Rrg::getInspectionPathBasic() {
+  // Shared for the whole cycle: the map must not change under a graph while it
+  // is being built. One acquisition per cycle rather than one per query - the
+  // RRG does thousands - and it nests nowhere, because nothing inside
+  // map_manager locks.
+  std::shared_lock<std::shared_mutex> map_lock(map_manager_->getMapMutex());
   auto t1 = std::chrono::high_resolution_clock::now();
   auto t2 = t1;
 
@@ -6939,6 +6964,11 @@ std::vector<geometry_msgs::msg::Pose> Rrg::getInspectionPathBasic() {
 }
 
 std::vector<geometry_msgs::msg::Pose> Rrg::getInspectionPath() {
+  // Shared for the whole cycle: the map must not change under a graph while it
+  // is being built. One acquisition per cycle rather than one per query - the
+  // RRG does thousands - and it nests nowhere, because nothing inside
+  // map_manager locks.
+  std::shared_lock<std::shared_mutex> map_lock(map_manager_->getMapMutex());
   // bool og_annotate_map_with_camera = planning_params_.annotate_map_with_camera;
   planning_params_.annotate_map_with_camera = true;
   auto t1 = std::chrono::high_resolution_clock::now();
@@ -7852,30 +7882,54 @@ bool Rrg::addRefPathToGraph(const std::shared_ptr<GraphManager> graph_manager,
 }
 
 void Rrg::setState(StateVec& state) {
-  if (!odometry_ready) {
+  // Split in two on purpose. The pose bookkeeping is cheap and must never wait
+  // on anything, because a planning cycle can hold the map lock for hundreds of
+  // milliseconds - and for three whole seconds inside runGlobalPlanner, whose
+  // only reason to exist is that a fresher pose arrives during the wait. The map
+  // mutations below are the part that genuinely conflicts with the planner, so
+  // only they take the map lock, and they take it after the pose is already
+  // recorded.
+  const bool first_odometry = !odometry_ready;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    current_state_ = state;
+    odometry_ready = true;
+    if (robot_backtracking_queue_.size()) {
+      if (robot_backtracking_queue_.size() >= backtracking_queue_max_size) {
+        robot_backtracking_queue_.pop();
+      }
+      robot_backtracking_queue_.emplace(current_state_);
+    } else {
+      robot_backtracking_queue_.emplace(state);
+    }
+  }
+
+  if (first_odometry) {
     // First time receive the pose/odometry for planning purpose.
     // Reset the octomap
     RCLCPP_WARN_EXPRESSION(node_->get_logger(), global_verbosity >= Verbosity::WARN, "Received the first odometry, reset the map");
+    // Deliberately unlocked: resetMap goes through the voxblox server's clear(),
+    // which takes the map lock itself. Holding it here self-deadlocks - glibc
+    // catches it as "Resource deadlock avoided" on the first odometry message.
     map_manager_->resetMap();
   }
-  current_state_ = state;
-  odometry_ready = true;
   // Clear free space based on current voxel size.
   if (planner_trigger_count_ < planning_params_.augment_free_voxels_time) {
+    // Exclusive, and locked here rather than around the block above: this one
+    // walks the layer directly through map_manager, which holds no lock of its
+    // own. This callback is in its own group, so it is the one place that can
+    // mutate the map while a planning cycle reads it.
+    std::unique_lock<std::shared_mutex> map_lock(map_manager_->getMapMutex());
     map_manager_->augmentFreeBox(
-        Eigen::Vector3d(current_state_[0], current_state_[1],
-                        current_state_[2]) +
+        Eigen::Vector3d(state[0], state[1], state[2]) +
             robot_params_.center_offset,
         robot_box_size_);
   }
-  if (robot_backtracking_queue_.size()) {
-    if (robot_backtracking_queue_.size() >= backtracking_queue_max_size) {
-      robot_backtracking_queue_.pop();
-    }
-    robot_backtracking_queue_.emplace(current_state_);
-  } else {
-    robot_backtracking_queue_.emplace(state);
-  }
+}
+
+StateVec Rrg::getCurrentState() const {
+  std::lock_guard<std::mutex> lock(state_mutex_);
+  return current_state_;
 }
 
 void Rrg::freePointCloudtimerCallback() {
@@ -8385,6 +8439,11 @@ void Rrg::setNextCompartmentCenter(Eigen::Vector3d &center)
 }
 
 std::vector<geometry_msgs::msg::Pose> Rrg::getOpeningTraversalPath(OpeningTraversalMode mode, OpeningTraversalStatus &status) {
+  // Shared for the whole cycle: the map must not change under a graph while it
+  // is being built. One acquisition per cycle rather than one per query - the
+  // RRG does thousands - and it nests nowhere, because nothing inside
+  // map_manager locks.
+  std::shared_lock<std::shared_mutex> map_lock(map_manager_->getMapMutex());
 	std::vector<geometry_msgs::msg::Pose> through_path;
 
   RCLCPP_WARN_EXPRESSION(node_->get_logger(), global_verbosity >= Verbosity::DEBUG, "OPENING Mode: %d", mode);
@@ -9171,6 +9230,11 @@ std::vector<geometry_msgs::msg::Pose> Rrg::runGlobalPlanner(int vertex_id,
                                                        bool not_check_frontier,
                                                        bool ignore_time,
                                                        int &status) {
+  // Shared for the whole cycle: the map must not change while a graph is being
+  // built on it. One acquisition per cycle rather than one per query - the RRG
+  // does thousands - and it nests nowhere, because nothing inside map_manager
+  // locks.
+  std::shared_lock<std::shared_mutex> map_lock(map_manager_->getMapMutex());
   // @not_check_frontier: just check if it is feasible (collision-free + time)
   // @ignore_time: don't consider time budget.
 
@@ -9181,11 +9245,27 @@ std::vector<geometry_msgs::msg::Pose> Rrg::runGlobalPlanner(int vertex_id,
   //
   RCLCPP_INFO_EXPRESSION(node_->get_logger(), global_verbosity >= Verbosity::PLANNER_STATUS, "Global planner triggered");
   if (vertex_id) {
-    // ROS 1 slept and then pumped the queue with ros::spinOnce() so the
-    // odometry callback could refresh current_state_.  rclcpp has no nested
-    // spin -- spin_some() from inside a spinning executor throws -- and the
-    // node runs a SingleThreadedExecutor, so the sleep is all that is left.
+    // ROS 1 slept here and pumped the queue with ros::spinOnce() so the odometry
+    // callback could refresh current_state_. rclcpp has no nested spin, so the
+    // refresh comes from the executor instead: the odometry subscription lives
+    // in its own callback group and setState only takes state_mutex_, so it runs
+    // freely while this callback sleeps.
+    const rclcpp::Time before = node_->now();
+    const StateVec state_before = getCurrentState();
+    // Drop the map lock for the wait. Holding it here would stall voxblox's
+    // integration for three seconds - about thirty clouds - to no purpose: this
+    // wait is about the pose, not the map.
+    map_lock.unlock();
     node_->get_clock()->sleep_for(rclcpp::Duration::from_seconds(3.0));
+    map_lock.lock();
+    const StateVec state_after = getCurrentState();
+    RCLCPP_INFO_EXPRESSION(
+        node_->get_logger(), global_verbosity >= Verbosity::PLANNER_STATUS,
+        "Global planner waited %.2f s; odometry moved %.3f m during the wait",
+        (node_->now() - before).seconds(),
+        (Eigen::Vector3d(state_after[0], state_after[1], state_after[2]) -
+         Eigen::Vector3d(state_before[0], state_before[1], state_before[2]))
+            .norm());
   }
   
   
