@@ -29,6 +29,7 @@ Arguments (all optional):
                         default: rmf_owl
     x y z roll pitch yaw  spawn pose. default: 0 0 1 0 0 0
     headless            gz server with no GUI. default: true
+    headless_rendering  offscreen EGL rendering, needed for gpu_lidar. default: true
     use_sim_time        on the nodes started here. default: true
     bridge              start ros_gz_bridge. default: true
     controller          start uav_path_follower_node. default: true
@@ -120,6 +121,13 @@ _ARGS = [
     ("lidar_vertical_samples", "128", "gpu_lidar vertical beams."),
     ("spawn_timeout", "180", "Seconds to wait for the gz create service before spawning."),
     ("gz_verbosity", "1", "gz sim -v level."),
+    # -s starts the server without a GUI, which is not the same thing as being
+    # able to render offscreen. The gpu_lidar raycasts the rendered scene, so
+    # without --headless-rendering gz never creates an EGL context and the
+    # sensor falls back to the CPU - nvidia-smi shows no process at all even
+    # with the GPU passed through. Only meaningful together with headless.
+    ("headless_rendering", "true",
+     "Render offscreen through EGL. Needed for gpu_lidar to use the GPU."),
     ("controller_config", "", "Override the follower's parameter YAML."),
 ]
 
@@ -192,7 +200,12 @@ def _setup(context, *args, **kwargs):
         p for p in [cfg("resource_path"), os.environ.get("GZ_SIM_RESOURCE_PATH", "")] if p
     )
 
-    gz_args = f"-r -v {cfg('gz_verbosity')} {'-s ' if flag('headless') else ''}{world_file}"
+    headless_flags = ""
+    if flag("headless"):
+        headless_flags = "-s "
+        if flag("headless_rendering"):
+            headless_flags += "--headless-rendering "
+    gz_args = f"-r -v {cfg('gz_verbosity')} {headless_flags}{world_file}"
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory("ros_gz_sim"), "launch", "gz_sim.launch.py")
