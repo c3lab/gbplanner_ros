@@ -158,6 +158,20 @@ RUN mkdir -p /opt/deps_ws/src \
 # every fresh container re-triggers the interactive host-key prompt on the first
 # git clone over SSH. accept-new auto-trusts unseen hosts but still rejects a
 # host key that changed from one already accepted, unlike StrictHostKeyChecking=no.
+# The NVIDIA container toolkit mounts libEGL_nvidia.so but not the libglvnd ICD
+# manifest that points at it - CUDA base images ship that file, plain ros:jazzy
+# does not. Without it libglvnd sees only 50_mesa.json and every EGL context
+# falls back to llvmpipe, which for gz means the gpu_lidar raycasts the scene on
+# the CPU. The libraries are already there; this is just the missing pointer.
+RUN mkdir -p /usr/share/glvnd/egl_vendor.d \
+    && printf '%s\n' \
+       '{' \
+       '    "file_format_version" : "1.0.0",' \
+       '    "ICD" : {' \
+       '        "library_path" : "libEGL_nvidia.so.0"' \
+       '    }' \
+       '}' > /usr/share/glvnd/egl_vendor.d/10_nvidia.json
+
 RUN git config --global core.sshCommand "ssh -o StrictHostKeyChecking=accept-new"
 
 WORKDIR /workspace
