@@ -1,0 +1,40 @@
+# Outer position loop for the simulated RMF-Owl. The inner loop is gz-sim's
+# MulticopterVelocityControl, whose own gains live in the robot SDF.
+/**:
+  ros__parameters:
+    # 20 Hz is what the ROS 1 follower ran at; the Lee controller underneath
+    # runs at the physics rate, so this only has to be fast relative to the
+    # vehicle, not to the simulation.
+    control_rate: 20.0
+
+    # gz's MulticopterVelocityControl reads its Twist in the body frame.
+    command_frame: body
+
+    # Waypoint acceptance. Looser than the ROS 1 follower's 0.25 m because a
+    # saturated P loop parks a little short of its setpoint; too tight and the
+    # vehicle never declares a waypoint reached and never advances.
+    trans_tolerance: 0.4
+    rot_tolerance: 0.5
+
+    # v_cmd = clamp(kp * position_error). v_max / kp is the distance at which
+    # the command saturates: 1 m here, so the vehicle runs at full speed until
+    # it is well inside the leg and then eases in.
+    kp_xy: 1.0
+    kp_z: 1.0
+    kp_yaw: 1.0
+
+    # Keep at or below PlanningParams.v_max / yaw_rate_max in
+    # gbplanner_config.yaml, otherwise the vehicle outruns the map the planner
+    # planned against.
+    v_max_xy: 1.0
+    v_max_z: 1.0
+    yaw_rate_max: 0.9
+
+    # Older than this and odometry counts as gone: command hover, not the last
+    # setpoint computed against a stale pose.
+    odometry_timeout: 1.0
+
+    # Hz at which `true` is republished on the enable topic. The gz plugin
+    # latches it, but the bridge silently drops anything published before
+    # Gazebo's subscriber exists, so this is not a one-shot.
+    enable_rate: 1.0

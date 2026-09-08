@@ -103,7 +103,15 @@ install(TARGETS ${PROJECT_NAME}
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 install(TARGETS gbplanner_node DESTINATION lib/${PROJECT_NAME})
-install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
+# config/ keeps the ROS 1 tree shape: main_tree.xml reaches the shared subtrees
+# with ../../../bt_xml/... and BehaviorTree.CPP resolves those relative to the
+# including file, so the installed layout has to match the source layout.
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
+
+# launch/ is flat, unlike the ROS 1 custom_robot/ and uav/gz/ subdirectories:
+# `ros2 launch gbplanner <file>` addresses a launch file by bare filename, and
+# docker-compose calls `ros2 launch gbplanner sim_gbplanner.launch.py`.
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_export_include_directories(include)

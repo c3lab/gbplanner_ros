@@ -1,0 +1,94 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+    Property Tree Widget:
+      Expanded: ~
+    Tree Height: 600
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+      Cell Size: 5
+      Plane Cell Count: 40
+      Color: 160; 160; 164
+      Reference Frame: <Fixed Frame>
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Marker Scale: 1
+      Show Names: true
+      Show Axes: true
+      Show Arrows: false
+      Update Interval: 0
+    - Class: rviz_default_plugins/PointCloud2
+      Name: LidarPoints
+      Enabled: true
+      Topic:
+        Value: /rmf_owl/lidar/points
+        Depth: 5
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+        History Policy: Keep Last
+      Size (m): 0.05
+      Style: Points
+      Decay Time: 0
+      Color Transformer: AxisColor
+      Axis: Z
+      Use rainbow: true
+    - Class: rviz_default_plugins/Odometry
+      Name: Odometry
+      Enabled: true
+      Topic:
+        Value: /rmf_owl/odometry
+        Depth: 10
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+        History Policy: Keep Last
+      Keep: 1
+      Shape:
+        Value: Arrow
+        Alpha: 1
+        Shaft Length: 0.6
+        Shaft Radius: 0.06
+        Head Length: 0.2
+        Head Radius: 0.12
+        Color: 255; 25; 0
+    - Class: rviz_default_plugins/Path
+      Name: PlannerPath
+      Enabled: true
+      Topic:
+        Value: /gbplanner_path
+        Depth: 5
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+        History Policy: Keep Last
+      Color: 25; 255; 0
+      Line Style: Lines
+  Global Options:
+    Fixed Frame: world
+    Background Color: 48; 48; 48
+    Frame Rate: 20
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Name: Current View
+      Distance: 40
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Pitch: 0.7
+      Yaw: 0.8
+      Target Frame: <Fixed Frame>
+Window Geometry:
+  Height: 900
+  Width: 1400
+  Displays:
+    collapsed: false

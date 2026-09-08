@@ -1,0 +1,753 @@
+<?xml version="1.0"?>
+<!--
+  RMF-Owl (originally "cerberus_rmf_sensor_config_1", Autonomous Robots Lab /
+  NTNU; authors Mihir Kulkarni and Paolo de Petris). Derived from
+  gz/uav_sim/uav_gazebo/models/rmf_owl/model.sdf in the ROS 1 arl_gazebo_sim
+  package, which carries that repository's BSD-3-Clause LICENSE.
+
+  This is a TEMPLATE, not a loadable model: gz_sim.launch.py renders it per
+  spawned robot. Two kinds of markup are substituted:
+
+    {{robot_name}}            the gz model name, the plugins' <robotNamespace>
+                              and the prefix of every gz topic and TF frame.
+                              One SDF spawned twice under one gz server would
+                              otherwise put both robots on the same
+                              rmf_owl/command/velocity.
+    BEGIN:x / END:x           a pair of XML comments (written out further
+                              down, never inside this one, because a comment
+                              may not contain a double hyphen) delimiting an
+                              optional block that the renderer drops when the
+                              matching launch flag is false. Dropping a
+                              rendering sensor is not the same as not bridging
+                              it: gz stops spending a render pass on it.
+
+  Changes from the ROS 1 original, and why:
+
+  * MulticopterPositionControl is GONE. That system is an NTNU addition to
+    gz-sim; Harmonic (gz-sim 8.11) ships MulticopterVelocityControl and
+    MulticopterMotorModel but not it, and its source is not available. The
+    position loop it provided now lives in gbplanner_gz_control's
+    uav_path_follower_node, which closes position -> velocity in ROS and
+    commands {{robot_name}}/command/velocity.
+  * The DAE visuals (rmf_owl.dae 27 MB, ouster-os0.dae 7.5 MB) are replaced by
+    primitives. Masses, inertias and rotor geometry are copied verbatim, so the
+    flight dynamics are unchanged; the gpu_lidar raycasts the render scene, and
+    its 0.3 m minimum range excludes the airframe either way. This keeps 34 MB
+    of binary assets out of the repository.
+  * PosePublisher no longer uses the static topic. tf2's static listener
+    subscribes transient_local while ros_gz_bridge publishes volatile, so a
+    bridged /tf_static never reaches it. Every frame goes on the dynamic topic
+    instead, rate-limited to 50 Hz (the plugin default is every physics
+    iteration, i.e. 1 kHz).
+  * The lidar declares <gz_frame_id> so the bridged PointCloud2 header names a
+    frame that actually exists in the tree PosePublisher builds.
+-->
+<sdf version="1.9">
+    <model name="{{robot_name}}" canonical_link="base_link">
+        <pose>0 0 0.15 0 -0 0</pose>
+
+        <link name="base_link">
+            <pose>0 0 0 0 -0 0</pose>
+            <inertial>
+                <pose>0 0 0 0 -0 0</pose>
+                <mass>1.46</mass>
+                <inertia>
+                    <ixx>0.017</ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>0.018</iyy>
+                    <iyz>0</iyz>
+                    <izz>0.028</izz>
+                </inertia>
+            </inertial>
+            <collision name="base_link_collision">
+                <pose>0 0 0.02 0 -0 0</pose>
+                <geometry>
+                    <box>
+                        <size>0.22 0.22 0.09</size>
+                    </box>
+                </geometry>
+            </collision>
+            <visual name="base_link_visual">
+                <pose>0 0 0.02 0 -0 0</pose>
+                <geometry>
+                    <box>
+                        <size>0.22 0.22 0.09</size>
+                    </box>
+                </geometry>
+                <material>
+                    <ambient>0.15 0.15 0.15 1</ambient>
+                    <diffuse>0.2 0.2 0.2 1</diffuse>
+                    <specular>0.3 0.3 0.3 1</specular>
+                </material>
+            </visual>
+
+            <sensor name="imu_sensor" type="imu">
+                <always_on>1</always_on>
+                <update_rate>200</update_rate>
+                <visualize>false</visualize>
+                <topic>{{robot_name}}/imu</topic>
+                <gz_frame_id>{{robot_name}}/base_link</gz_frame_id>
+                <imu>
+                    <angular_velocity>
+                        <x>
+                            <noise type="gaussian">
+                                <mean>0</mean>
+                                <stddev>0.009</stddev>
+                                <bias_mean>0.00075</bias_mean>
+                                <bias_stddev>0.005</bias_stddev>
+                                <dynamic_bias_stddev>0.00002</dynamic_bias_stddev>
+                                <dynamic_bias_correlation_time>400.0</dynamic_bias_correlation_time>
+                                <precision>0.00025</precision>
+                            </noise>
+                        </x>
+                        <y>
+                            <noise type="gaussian">
+                                <mean>0</mean>
+                                <stddev>0.009</stddev>
+                                <bias_mean>0.00075</bias_mean>
+                                <bias_stddev>0.005</bias_stddev>
+                                <dynamic_bias_stddev>0.00002</dynamic_bias_stddev>
+                                <dynamic_bias_correlation_time>400.0</dynamic_bias_correlation_time>
+                                <precision>0.00025</precision>
+                            </noise>
+                        </y>
+                        <z>
+                            <noise type="gaussian">
+                                <mean>0</mean>
+                                <stddev>0.009</stddev>
+                                <bias_mean>0.00075</bias_mean>
+                                <bias_stddev>0.005</bias_stddev>
+                                <dynamic_bias_stddev>0.00002</dynamic_bias_stddev>
+                                <dynamic_bias_correlation_time>400.0</dynamic_bias_correlation_time>
+                                <precision>0.00025</precision>
+                            </noise>
+                        </z>
+                    </angular_velocity>
+                    <linear_acceleration>
+                        <x>
+                            <noise type="gaussian">
+                                <mean>0</mean>
+                                <stddev>0.021</stddev>
+                                <bias_mean>0.05</bias_mean>
+                                <bias_stddev>0.0075</bias_stddev>
+                                <dynamic_bias_stddev>0.000375</dynamic_bias_stddev>
+                                <dynamic_bias_correlation_time>175.0</dynamic_bias_correlation_time>
+                                <precision>0.005</precision>
+                            </noise>
+                        </x>
+                        <y>
+                            <noise type="gaussian">
+                                <mean>0</mean>
+                                <stddev>0.021</stddev>
+                                <bias_mean>0.05</bias_mean>
+                                <bias_stddev>0.0075</bias_stddev>
+                                <dynamic_bias_stddev>0.000375</dynamic_bias_stddev>
+                                <dynamic_bias_correlation_time>175.0</dynamic_bias_correlation_time>
+                                <precision>0.005</precision>
+                            </noise>
+                        </y>
+                        <z>
+                            <noise type="gaussian">
+                                <mean>0</mean>
+                                <stddev>0.021</stddev>
+                                <bias_mean>0.05</bias_mean>
+                                <bias_stddev>0.0075</bias_stddev>
+                                <dynamic_bias_stddev>0.000375</dynamic_bias_stddev>
+                                <dynamic_bias_correlation_time>175.0</dynamic_bias_correlation_time>
+                                <precision>0.005</precision>
+                            </noise>
+                        </z>
+                    </linear_acceleration>
+                    <enable_orientation>0</enable_orientation>
+                </imu>
+            </sensor>
+
+            <!--BEGIN:camera-->
+            <sensor name="camera_front" type="camera">
+                <pose>0.180 0 -0.025 0 0.0 0</pose>
+                <always_on>1</always_on>
+                <update_rate>20</update_rate>
+                <visualize>false</visualize>
+                <topic>{{robot_name}}/camera_front</topic>
+                <gz_frame_id>{{robot_name}}/base_link</gz_frame_id>
+                <camera name="camera_front">
+                    <horizontal_fov>2.0944</horizontal_fov>
+                    <lens>
+                        <intrinsics>
+                            <fx>1108.952913</fx>
+                            <fy>1110.658360</fy>
+                            <cx>729.533992</cx>
+                            <cy>544.985715</cy>
+                            <s>1</s>
+                        </intrinsics>
+                    </lens>
+                    <distortion>
+                        <k1>0.0</k1>
+                        <k2>0.0</k2>
+                        <k3>0.0</k3>
+                        <p1>0.0</p1>
+                        <p2>0.0</p2>
+                        <center>0.5 0.5</center>
+                    </distortion>
+                    <image>
+                        <width>1440</width>
+                        <height>1080</height>
+                        <format>R8G8B8</format>
+                    </image>
+                    <clip>
+                        <near>0.02</near>
+                        <far>20</far>
+                    </clip>
+                    <noise>
+                        <type>gaussian</type>
+                        <mean>0</mean>
+                        <stddev>0.007</stddev>
+                    </noise>
+                </camera>
+            </sensor>
+            <!--END:camera-->
+        </link>
+
+        <!--BEGIN:camera-->
+        <link name="camera_link">
+            <pose>0.25 0 0.0 0 0.0 0</pose>
+            <inertial>
+                <pose>0 0 0 0 0 0</pose>
+                <mass>0.001</mass>
+                <inertia>
+                    <ixx>0.000461625</ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>0.000461625</iyy>
+                    <iyz>0</iyz>
+                    <izz>0.000473063</izz>
+                </inertia>
+            </inertial>
+            <visual name="camera_visual">
+                <geometry>
+                    <cylinder>
+                        <length>0.001</length>
+                        <radius>0.001</radius>
+                    </cylinder>
+                </geometry>
+            </visual>
+            <sensor name="depth_camera_front" type="depth_camera">
+                <pose>0 0 0 0 0 0</pose>
+                <always_on>1</always_on>
+                <update_rate>20</update_rate>
+                <visualize>false</visualize>
+                <topic>{{robot_name}}/depth_camera_front</topic>
+                <gz_frame_id>{{robot_name}}/camera_link</gz_frame_id>
+                <camera name="depth_camera_front">
+                    <horizontal_fov>1.518</horizontal_fov>
+                    <lens>
+                        <intrinsics>
+                            <fx>74.94</fx>
+                            <fy>74.94</fy>
+                            <cx>48</cx>
+                            <cy>27</cy>
+                            <s>1</s>
+                        </intrinsics>
+                    </lens>
+                    <image>
+                        <width>96</width>
+                        <height>54</height>
+                        <format>R_FLOAT32</format>
+                    </image>
+                    <clip>
+                        <near>0.2</near>
+                        <far>15</far>
+                    </clip>
+                    <noise>
+                        <type>gaussian</type>
+                        <mean>0</mean>
+                        <stddev>0.007</stddev>
+                    </noise>
+                </camera>
+            </sensor>
+        </link>
+        <joint name="camera_joint_pitch" type="revolute">
+            <child>camera_link</child>
+            <parent>base_link</parent>
+            <axis>
+                <dynamics>
+                    <spring_reference>0</spring_reference>
+                    <spring_stiffness>0.02</spring_stiffness>
+                </dynamics>
+                <xyz>0 1 0</xyz>
+                <limit>
+                    <lower>-1e+16</lower>
+                    <upper>1e+16</upper>
+                </limit>
+            </axis>
+        </joint>
+        <!--END:camera-->
+
+        <link name="laser_link">
+            <pose>0 0 0.05 0 -0 0</pose>
+            <inertial>
+                <pose>0 0 0.03675 0 -0 0</pose>
+                <mass>0.5</mass>
+                <inertia>
+                    <ixx>0.000461625</ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>0.000461625</iyy>
+                    <iyz>0</iyz>
+                    <izz>0.000473063</izz>
+                </inertia>
+            </inertial>
+            <collision name="laser_collision">
+                <pose>0 0 0.03675 0 -0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.0735</length>
+                        <radius>0.0435</radius>
+                    </cylinder>
+                </geometry>
+            </collision>
+            <visual name="laser_visual">
+                <pose>0 0 0.03675 0 -0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <length>0.0735</length>
+                        <radius>0.0435</radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <ambient>0.6 0.6 0.62 1</ambient>
+                    <diffuse>0.75 0.75 0.78 1</diffuse>
+                </material>
+            </visual>
+            <gravity>1</gravity>
+            <!--BEGIN:lidar-->
+            <sensor name="laser" type="gpu_lidar">
+                <pose>0 0 0.035925 0 -0 0</pose>
+                <topic>{{robot_name}}/lidar</topic>
+                <gz_frame_id>{{robot_name}}/laser_link</gz_frame_id>
+                <update_rate>10</update_rate>
+                <visualize>false</visualize>
+                <always_on>1</always_on>
+                <lidar>
+                    <scan>
+                        <horizontal>
+                            <samples>{{lidar_horizontal_samples}}</samples>
+                            <resolution>1</resolution>
+                            <min_angle>-3.1459</min_angle>
+                            <max_angle>3.1459</max_angle>
+                        </horizontal>
+                        <vertical>
+                            <samples>{{lidar_vertical_samples}}</samples>
+                            <resolution>1</resolution>
+                            <min_angle>-0.785398</min_angle>
+                            <max_angle>0.785398</max_angle>
+                        </vertical>
+                    </scan>
+                    <range>
+                        <min>0.3</min>
+                        <max>50</max>
+                        <resolution>0.01</resolution>
+                    </range>
+                    <noise>
+                        <type>gaussian</type>
+                        <mean>0</mean>
+                        <stddev>0.01</stddev>
+                    </noise>
+                </lidar>
+            </sensor>
+            <!--END:lidar-->
+        </link>
+        <joint name="laser_joint" type="fixed">
+            <child>laser_link</child>
+            <parent>base_link</parent>
+        </joint>
+
+        <link name="rotor_0">
+            <pose>0.09 -0.09 -0.005 0 -0 0</pose>
+            <inertial>
+                <pose>0 0 0 0 -0 0</pose>
+                <mass>0.005</mass>
+                <inertia>
+                    <ixx>9.75e-07</ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>8.13545e-05</iyy>
+                    <iyz>0</iyz>
+                    <izz>8.22545e-05</izz>
+                </inertia>
+            </inertial>
+            <collision name="rotor_0_collision">
+                <geometry>
+                    <cylinder>
+                        <length>0.005</length>
+                        <radius>0.06</radius>
+                    </cylinder>
+                </geometry>
+            </collision>
+            <visual name="rotor_0_visual">
+                <geometry>
+                    <cylinder>
+                        <length>0.005</length>
+                        <radius>0.06</radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <ambient>0.6 0.1 0.1 1</ambient>
+                    <diffuse>0.9 0.1 0.1 1</diffuse>
+                </material>
+                <cast_shadows>0</cast_shadows>
+            </visual>
+            <gravity>1</gravity>
+        </link>
+        <joint name="rotor_0_joint" type="revolute">
+            <child>rotor_0</child>
+            <parent>base_link</parent>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <lower>-1e+16</lower>
+                    <upper>1e+16</upper>
+                </limit>
+                <dynamics>
+                    <spring_reference>0</spring_reference>
+                    <spring_stiffness>0</spring_stiffness>
+                </dynamics>
+            </axis>
+        </joint>
+
+        <link name="rotor_1">
+            <pose>-0.09 0.09 0.045 0 -0 0</pose>
+            <inertial>
+                <pose>0 0 0 0 -0 0</pose>
+                <mass>0.005</mass>
+                <inertia>
+                    <ixx>9.75e-07</ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>8.13545e-05</iyy>
+                    <iyz>0</iyz>
+                    <izz>8.22545e-05</izz>
+                </inertia>
+            </inertial>
+            <collision name="rotor_1_collision">
+                <geometry>
+                    <cylinder>
+                        <length>0.005</length>
+                        <radius>0.06</radius>
+                    </cylinder>
+                </geometry>
+            </collision>
+            <visual name="rotor_1_visual">
+                <geometry>
+                    <cylinder>
+                        <length>0.005</length>
+                        <radius>0.06</radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <ambient>0.1 0.1 0.1 1</ambient>
+                    <diffuse>0.25 0.25 0.25 1</diffuse>
+                </material>
+                <cast_shadows>0</cast_shadows>
+            </visual>
+            <gravity>1</gravity>
+        </link>
+        <joint name="rotor_1_joint" type="revolute">
+            <child>rotor_1</child>
+            <parent>base_link</parent>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <lower>-1e+16</lower>
+                    <upper>1e+16</upper>
+                </limit>
+                <dynamics>
+                    <spring_reference>0</spring_reference>
+                    <spring_stiffness>0</spring_stiffness>
+                </dynamics>
+            </axis>
+        </joint>
+
+        <link name="rotor_2">
+            <pose>0.09 0.09 -0.005 0 0 0</pose>
+            <inertial>
+                <pose>0 0 0 0 -0 0</pose>
+                <mass>0.005</mass>
+                <inertia>
+                    <ixx>9.75e-07</ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>8.13545e-05</iyy>
+                    <iyz>0</iyz>
+                    <izz>8.22545e-05</izz>
+                </inertia>
+            </inertial>
+            <collision name="rotor_2_collision">
+                <geometry>
+                    <cylinder>
+                        <length>0.005</length>
+                        <radius>0.06</radius>
+                    </cylinder>
+                </geometry>
+            </collision>
+            <visual name="rotor_2_visual">
+                <geometry>
+                    <cylinder>
+                        <length>0.005</length>
+                        <radius>0.06</radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <ambient>0.6 0.1 0.1 1</ambient>
+                    <diffuse>0.9 0.1 0.1 1</diffuse>
+                </material>
+                <cast_shadows>0</cast_shadows>
+            </visual>
+            <gravity>1</gravity>
+        </link>
+        <joint name="rotor_2_joint" type="revolute">
+            <child>rotor_2</child>
+            <parent>base_link</parent>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <lower>-1e+16</lower>
+                    <upper>1e+16</upper>
+                </limit>
+                <dynamics>
+                    <spring_reference>0</spring_reference>
+                    <spring_stiffness>0</spring_stiffness>
+                </dynamics>
+            </axis>
+        </joint>
+
+        <link name="rotor_3">
+            <pose>-0.09 -0.09 0.045 0 -0 0</pose>
+            <inertial>
+                <pose>0 0 0 0 -0 0</pose>
+                <mass>0.005</mass>
+                <inertia>
+                    <ixx>9.75e-07</ixx>
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyy>8.13545e-05</iyy>
+                    <iyz>0</iyz>
+                    <izz>8.22545e-05</izz>
+                </inertia>
+            </inertial>
+            <collision name="rotor_3_collision">
+                <geometry>
+                    <cylinder>
+                        <length>0.005</length>
+                        <radius>0.06</radius>
+                    </cylinder>
+                </geometry>
+            </collision>
+            <visual name="rotor_3_visual">
+                <geometry>
+                    <cylinder>
+                        <length>0.005</length>
+                        <radius>0.06</radius>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <ambient>0.1 0.1 0.1 1</ambient>
+                    <diffuse>0.25 0.25 0.25 1</diffuse>
+                </material>
+                <cast_shadows>0</cast_shadows>
+            </visual>
+            <gravity>1</gravity>
+        </link>
+        <joint name="rotor_3_joint" type="revolute">
+            <child>rotor_3</child>
+            <parent>base_link</parent>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <lower>-1e+16</lower>
+                    <upper>1e+16</upper>
+                </limit>
+                <dynamics>
+                    <spring_reference>0</spring_reference>
+                    <spring_stiffness>0</spring_stiffness>
+                </dynamics>
+            </axis>
+        </joint>
+
+        <!-- Plugins -->
+        <plugin filename="gz-sim-multicopter-motor-model-system"
+            name="gz::sim::systems::MulticopterMotorModel">
+            <robotNamespace>{{robot_name}}</robotNamespace>
+            <jointName>rotor_0_joint</jointName>
+            <linkName>rotor_0</linkName>
+            <turningDirection>ccw</turningDirection>
+            <timeConstantUp>0.0125</timeConstantUp>
+            <timeConstantDown>0.025</timeConstantDown>
+            <maxRotVelocity>2000.0</maxRotVelocity>
+            <motorConstant>8.54858e-06</motorConstant>
+            <momentConstant>0.016</momentConstant>
+            <commandSubTopic>gazebo/command/motor_speed</commandSubTopic>
+            <motorNumber>0</motorNumber>
+            <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+            <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+            <motorSpeedPubTopic>motor_speed/0</motorSpeedPubTopic>
+            <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+            <motorType>velocity</motorType>
+        </plugin>
+        <plugin filename="gz-sim-multicopter-motor-model-system"
+            name="gz::sim::systems::MulticopterMotorModel">
+            <robotNamespace>{{robot_name}}</robotNamespace>
+            <jointName>rotor_1_joint</jointName>
+            <linkName>rotor_1</linkName>
+            <turningDirection>ccw</turningDirection>
+            <timeConstantUp>0.0125</timeConstantUp>
+            <timeConstantDown>0.025</timeConstantDown>
+            <maxRotVelocity>2000.0</maxRotVelocity>
+            <motorConstant>8.54858e-06</motorConstant>
+            <momentConstant>0.016</momentConstant>
+            <commandSubTopic>gazebo/command/motor_speed</commandSubTopic>
+            <motorNumber>1</motorNumber>
+            <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+            <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+            <motorSpeedPubTopic>motor_speed/1</motorSpeedPubTopic>
+            <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+            <motorType>velocity</motorType>
+        </plugin>
+        <plugin filename="gz-sim-multicopter-motor-model-system"
+            name="gz::sim::systems::MulticopterMotorModel">
+            <robotNamespace>{{robot_name}}</robotNamespace>
+            <jointName>rotor_2_joint</jointName>
+            <linkName>rotor_2</linkName>
+            <turningDirection>cw</turningDirection>
+            <timeConstantUp>0.0125</timeConstantUp>
+            <timeConstantDown>0.025</timeConstantDown>
+            <maxRotVelocity>2000.0</maxRotVelocity>
+            <motorConstant>8.54858e-06</motorConstant>
+            <momentConstant>0.016</momentConstant>
+            <commandSubTopic>gazebo/command/motor_speed</commandSubTopic>
+            <motorNumber>2</motorNumber>
+            <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+            <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+            <motorSpeedPubTopic>motor_speed/2</motorSpeedPubTopic>
+            <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+            <motorType>velocity</motorType>
+        </plugin>
+        <plugin filename="gz-sim-multicopter-motor-model-system"
+            name="gz::sim::systems::MulticopterMotorModel">
+            <robotNamespace>{{robot_name}}</robotNamespace>
+            <jointName>rotor_3_joint</jointName>
+            <linkName>rotor_3</linkName>
+            <turningDirection>cw</turningDirection>
+            <timeConstantUp>0.0125</timeConstantUp>
+            <timeConstantDown>0.025</timeConstantDown>
+            <maxRotVelocity>2000.0</maxRotVelocity>
+            <motorConstant>8.54858e-06</motorConstant>
+            <momentConstant>0.016</momentConstant>
+            <commandSubTopic>gazebo/command/motor_speed</commandSubTopic>
+            <motorNumber>3</motorNumber>
+            <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+            <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+            <motorSpeedPubTopic>motor_speed/3</motorSpeedPubTopic>
+            <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+            <motorType>velocity</motorType>
+        </plugin>
+
+        <plugin filename="gz-sim-multicopter-control-system"
+            name="gz::sim::systems::MulticopterVelocityControl">
+            <robotNamespace>{{robot_name}}</robotNamespace>
+            <commandSubTopic>command/velocity</commandSubTopic>
+            <enableSubTopic>enable</enableSubTopic>
+            <comLinkName>base_link</comLinkName>
+            <velocityGain>2.7 2.7 2.7</velocityGain>
+            <attitudeGain>2 3 0.15</attitudeGain>
+            <angularRateGain>0.4 0.52 0.18</angularRateGain>
+            <maximumLinearAcceleration>2 2 2</maximumLinearAcceleration>
+            <rotorConfiguration>
+                <rotor>
+                    <jointName>rotor_0_joint</jointName>
+                    <forceConstant>8.54858e-06</forceConstant>
+                    <momentConstant>0.016</momentConstant>
+                    <direction>1</direction>
+                </rotor>
+                <rotor>
+                    <jointName>rotor_1_joint</jointName>
+                    <forceConstant>8.54858e-06</forceConstant>
+                    <momentConstant>0.016</momentConstant>
+                    <direction>1</direction>
+                </rotor>
+                <rotor>
+                    <jointName>rotor_2_joint</jointName>
+                    <forceConstant>8.54858e-06</forceConstant>
+                    <momentConstant>0.016</momentConstant>
+                    <direction>-1</direction>
+                </rotor>
+                <rotor>
+                    <jointName>rotor_3_joint</jointName>
+                    <forceConstant>8.54858e-06</forceConstant>
+                    <momentConstant>0.016</momentConstant>
+                    <direction>-1</direction>
+                </rotor>
+            </rotorConfiguration>
+        </plugin>
+
+        <plugin filename="gz-sim-odometry-publisher-system"
+            name="gz::sim::systems::OdometryPublisher">
+            <odom_frame>world</odom_frame>
+            <robot_base_frame>{{robot_name}}/base_link</robot_base_frame>
+            <odom_publish_frequency>50</odom_publish_frequency>
+            <odom_topic>{{robot_name}}/odometry</odom_topic>
+            <odom_covariance_topic>{{robot_name}}/odometry_with_covariance</odom_covariance_topic>
+            <dimensions>3</dimensions>
+        </plugin>
+
+        <plugin filename="gz-sim-pose-publisher-system"
+            name="gz::sim::systems::PosePublisher">
+            <publish_link_pose>true</publish_link_pose>
+            <publish_visual_pose>false</publish_visual_pose>
+            <publish_collision_pose>false</publish_collision_pose>
+            <publish_sensor_pose>false</publish_sensor_pose>
+            <publish_model_pose>true</publish_model_pose>
+            <publish_nested_model_pose>false</publish_nested_model_pose>
+            <use_pose_vector_msg>true</use_pose_vector_msg>
+            <static_publisher>false</static_publisher>
+            <update_frequency>50</update_frequency>
+        </plugin>
+
+        <plugin filename="gz-sim-linearbatteryplugin-system"
+            name="gz::sim::systems::LinearBatteryPlugin">
+            <!--Li-ion battery spec from LIR18650 datasheet-->
+            <battery_name>linear_battery</battery_name>
+            <voltage>22.2</voltage>
+            <open_circuit_voltage_constant_coef>22.2</open_circuit_voltage_constant_coef>
+            <open_circuit_voltage_linear_coef>-3.1424</open_circuit_voltage_linear_coef>
+            <initial_charge>90.0</initial_charge>
+            <capacity>90.0</capacity>
+            <resistance>0.061523</resistance>
+            <smooth_current_tau>1.9499</smooth_current_tau>
+            <enable_recharge>false</enable_recharge>
+            <power_load>0.8</power_load>
+            <start_on_motion>true</start_on_motion>
+        </plugin>
+
+        <!--BEGIN:camera-->
+        <plugin filename="gz-sim-joint-position-controller-system"
+                name="gz::sim::systems::JointPositionController">
+            <joint_name>camera_joint_pitch</joint_name>
+            <topic>{{robot_name}}/camera_pitch</topic>
+            <p_gain>0.1</p_gain>
+            <i_gain>0.1</i_gain>
+            <d_gain>0.05</d_gain>
+            <i_max>1</i_max>
+            <i_min>-1</i_min>
+            <cmd_max>10</cmd_max>
+            <cmd_min>-10</cmd_min>
+        </plugin>
+        <plugin filename="gz-sim-joint-state-publisher-system"
+                name="gz::sim::systems::JointStatePublisher">
+            <joint_name>camera_joint_pitch</joint_name>
+            <topic>{{robot_name}}/camera_pitch_state</topic>
+        </plugin>
+        <!--END:camera-->
+    </model>
+</sdf>

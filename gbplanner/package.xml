@@ -37,6 +37,11 @@
   <depend>libgoogle-glog-dev</depend>
   <depend>libgflags-dev</depend>
 
+  <!-- Not linked against, only spawned by the launch files in launch/. -->
+  <exec_depend>pci_general</exec_depend>
+  <exec_depend>gbplanner_ui</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+
   <export>
     <build_type>ament_cmake</build_type>
   </export>
