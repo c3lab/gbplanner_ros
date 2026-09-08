@@ -94,7 +94,7 @@ services:
       source /opt/deps_ws/install/setup.bash &&
       cd /workspace/gbplanner3_ws &&
       colcon build --merge-install --symlink-install
-        --cmake-args -DCMAKE_BUILD_TYPE=Release -Wno-dev"
+      --cmake-args -DCMAKE_BUILD_TYPE=Release -Wno-dev"
 
   dev:
     extends: base
@@ -111,8 +111,8 @@ services:
       source /opt/deps_ws/install/setup.bash &&
       cd /workspace/gbplanner3_ws &&
       colcon build --merge-install --symlink-install
-        --packages-select ${REBUILD_PKG}
-        --cmake-args -DCMAKE_BUILD_TYPE=Release -Wno-dev"
+      --packages-select ${REBUILD_PKG}
+      --cmake-args -DCMAKE_BUILD_TYPE=Release -Wno-dev"
 
   run:
     extends: base
@@ -129,4 +129,4 @@ services:
     command: >
       bash -ci "source /workspace/gbplanner3_ws/install/setup.bash &&
       ros2 launch gbplanner sim_gbplanner.launch.py
-        namespace:=${NAMESPACE} rviz:=${RVIZ:-true} use_sim_time:=true"
+      namespace:=${NAMESPACE} rviz:=${RVIZ:-true} use_sim_time:=true"
