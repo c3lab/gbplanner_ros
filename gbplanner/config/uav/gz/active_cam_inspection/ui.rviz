@@ -6,12 +6,6 @@ Panels:
     Expanded: null
     Splitter Ratio: 0.7235293984413147
   Tree Height: 1230
-- Class: rviz_common/Selection
-  Name: Selection
-- Class: rviz_common/Tool Properties
-  Expanded: null
-  Name: Tool Properties
-  Splitter Ratio: 0.5886790156364441
 - Class: rviz_common/Views
   Expanded:
   - /Current View1

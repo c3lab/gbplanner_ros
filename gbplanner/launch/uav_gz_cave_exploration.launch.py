@@ -20,7 +20,8 @@ primitives-only cave that ships with gbplanner_gz_sim.
 """
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import (DeclareLaunchArgument, GroupAction,
+                            IncludeLaunchDescription)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
@@ -40,14 +41,15 @@ def generate_launch_description() -> LaunchDescription:
             "world": LaunchConfiguration("world"),
             "robot_name": robot_name,
             # The spawn pose the ROS 1 cave launch used.
-            "x": LaunchConfiguration("x"),
-            "y": LaunchConfiguration("y"),
-            "z": LaunchConfiguration("z"),
+            "x": "40.0",
+            "y": "5.0",
+            "z": "1.5",
             "headless": LaunchConfiguration("headless"),
             # Without this gz never creates an EGL context and the gpu_lidar
             # raycasts on the CPU: 6.7 Hz against its nominal 10.
             "headless_rendering": "true",
-            "resource_path": LaunchConfiguration("resource_path"),
+            # Where docker-compose mounts the subt_cave_sim tiles.
+            "resource_path": "/opt/subt_cave_sim/models",
             # What the trajectory follower flies. The control interface publishes
             # the planner's path here.
             "path_topic": "/gbplanner_path",
@@ -75,7 +77,6 @@ def generate_launch_description() -> LaunchDescription:
             "local_navigation_goal_topic": "/move_base_simple/goal",
             "rviz": LaunchConfiguration("rviz"),
             "use_sim_time": LaunchConfiguration("use_sim_time"),
-            "launch_prefix": LaunchConfiguration("launch_prefix"),
         }.items(),
     )
 
@@ -85,22 +86,24 @@ def generate_launch_description() -> LaunchDescription:
                 "world", default_value="darpa_cave_01",
                 description="World in gbplanner_gz_sim/worlds. Use cave_box when "
                             "the subt_cave_sim assets are not available."),
-            DeclareLaunchArgument(
-                "resource_path", default_value="/opt/subt_cave_sim/models",
-                description="Prepended to GZ_SIM_RESOURCE_PATH; where the "
-                            "subt_cave_sim tiles are mounted."),
             DeclareLaunchArgument("robot_name", default_value="rmf_owl"),
-            DeclareLaunchArgument("x", default_value="40.0"),
-            DeclareLaunchArgument("y", default_value="5.0"),
-            DeclareLaunchArgument("z", default_value="1.5"),
             DeclareLaunchArgument(
                 "headless", default_value="false",
                 description="Run gz without its GUI. RViz is separate and "
                             "follows the rviz argument."),
             DeclareLaunchArgument("rviz", default_value="true"),
             DeclareLaunchArgument("use_sim_time", default_value="true"),
-            DeclareLaunchArgument("launch_prefix", default_value=""),
-            simulation,
-            core,
+            # Scoped, and this is load-bearing rather than tidy.
+            # IncludeLaunchDescription does NOT open a scope: its
+            # launch_arguments become SetLaunchConfiguration in the
+            # CURRENT scope and stay there. Without the group, the
+            # simulation's rviz:=false - correct, since RViz belongs to
+            # the planner stack and not to gz - overwrote the shared
+            # rviz configuration, and the core include below then read
+            # back false and never started RViz at all.
+            # scoped only: forwarding stays on, or the parent's own
+            # configurations would not reach the includes either.
+            GroupAction([simulation], scoped=True),
+            GroupAction([core], scoped=True),
         ]
     )
