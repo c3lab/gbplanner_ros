@@ -130,6 +130,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY vcstool/image_deps.repos /tmp/image_deps.repos
 RUN mkdir -p /opt/deps_ws/src \
     && vcs import /opt/deps_ws/src < /tmp/image_deps.repos \
+    # mav_comm's ros2 branch ships four packages and only mav_msgs was actually
+    # ported: mav_state_machine_msgs and mav_system_msgs call
+    # rosidl_generate_interfaces without find_package(rosidl_default_generators),
+    # so CMake reports "Unknown CMake command". Nothing here needs them - only
+    # pci_general uses mav_comm, and only for mav_msgs - so skip them rather than
+    # carrying a patch for an upstream package we do not use.
+    && touch /opt/deps_ws/src/mav_comm/mav_state_machine_msgs/COLCON_IGNORE \
+             /opt/deps_ws/src/mav_comm/mav_system_msgs/COLCON_IGNORE \
     && source /opt/ros/${ROS_DISTRO}/setup.bash \
     && cd /opt/deps_ws \
     && colcon build \

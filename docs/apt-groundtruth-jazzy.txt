@@ -150,3 +150,13 @@ Porting consequences for pci_general (mechanical):
   #include <mav_msgs/Status.h>          -> <mav_msgs/msg/status.hpp>
   mav_msgs::Status                      -> mav_msgs::msg::Status
   mav_msgs::EigenTrajectoryPoint        -> unchanged (plain C++ struct, not a generated type)
+
+### MEASURED WHILE BUILDING THE IMAGE (2026-09-08)
+- ethz-asl/mav_comm@ros2 ships four packages; only mav_msgs was actually ported.
+  mav_state_machine_msgs/CMakeLists.txt:12 and mav_system_msgs/CMakeLists.txt:10 call
+  rosidl_generate_interfaces() with no find_package(rosidl_default_generators REQUIRED),
+  so colcon fails with: CMake Error ... Unknown CMake command "rosidl_generate_interfaces".
+  mav_msgs itself builds clean. Dockerfile.base drops COLCON_IGNORE into the two broken ones.
+- The image tag is gbplanner-ros2:<distro>-<version>, NOT gbplanner:<...>. An unrelated
+  gbplanner:jazzy-3.0.0 (id 52a70349eaed, 2026-03-17) already exists on this machine and
+  reusing the name would silently move the tag off it.

@@ -50,7 +50,7 @@ x-gui-env: &gui_env
 
 services:
   base:
-    image: gbplanner:${ROS_DISTRO}-${GBPLANNER3_VERSION}
+    image: ${IMAGE_NAME:-gbplanner-ros2}:${ROS_DISTRO}-${GBPLANNER3_VERSION}
     build:
       context: .
       dockerfile: docker/Dockerfile.base

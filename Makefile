@@ -1,5 +1,10 @@
 ROS_DISTRO := jazzy
 GBPLANNER3_VERSION := 3.0.0
+
+# Image tag. Deliberately NOT "gbplanner": a gbplanner:jazzy-3.0.0 image already
+# exists on this machine from an unrelated build (2026-03-17), and reusing the
+# name would move the tag off it.
+IMAGE_NAME := gbplanner-ros2
 ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 # Launch file passed to `ros2 launch gbplanner`. Unlike roslaunch, ros2 launch
@@ -45,6 +50,7 @@ endif
 NAMESPACE ?= robot0
 
 export ROOT_DIR
+export IMAGE_NAME
 export ROS_DISTRO
 export GBPLANNER3_VERSION
 export LAUNCH_FILE
@@ -59,7 +65,7 @@ CONTAINER_NAME := gbplanner_ros2
 default: help
 
 build: ## Build the gbplanner container image only
-	@echo "Building gbplanner:$(ROS_DISTRO)-$(GBPLANNER3_VERSION) container image..."
+	@echo "Building $(IMAGE_NAME):$(ROS_DISTRO)-$(GBPLANNER3_VERSION) container image..."
 	@$(COMPOSE) build base
 
 bootstrap: ## Clone the third-party workspace packages into bootstrap/
@@ -118,8 +124,8 @@ stop: ## Stop and remove any running gbplanner containers
 	@$(COMPOSE) down
 
 clean: stop ## Stop containers and remove the built image
-	@echo "Cleaning up gbplanner:$(ROS_DISTRO)-$(GBPLANNER3_VERSION) container image..."
-	@docker rmi gbplanner:$(ROS_DISTRO)-$(GBPLANNER3_VERSION) || true
+	@echo "Cleaning up $(IMAGE_NAME):$(ROS_DISTRO)-$(GBPLANNER3_VERSION) container image..."
+	@docker rmi $(IMAGE_NAME):$(ROS_DISTRO)-$(GBPLANNER3_VERSION) || true
 
 help: ## Show this help message
 	@echo "Usage: make [target]"
