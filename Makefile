@@ -28,6 +28,11 @@ REBUILD_PKG ?= gbplanner
 # Set ROS_DOMAIN_ID explicitly only to isolate whole robots from each other.
 ROS_DOMAIN_ID ?= 0
 
+# Where the subt_cave_sim tiles live, for the DARPA cave worlds. 3.9 GB with
+# git-lfs, so mounted rather than vendored; the ROS 1 checkout already has them.
+# Irrelevant when running world:=cave_box.
+SUBT_CAVE_SIM ?= $(shell dirname $(ROOT_DIR))/gbplanner_ros/bootstrap/sim/subt_cave_sim
+
 # Whether run-sim brings up RViz alongside the planner. Turn it off for the
 # robots you are not watching - one RViz per robot is rarely what you want:
 #   make run-sim robot1 RVIZ=false
@@ -57,6 +62,7 @@ export LAUNCH_FILE
 export NAMESPACE
 export REBUILD_PKG
 export ROS_DOMAIN_ID
+export SUBT_CAVE_SIM
 export RVIZ
 
 COMPOSE := docker compose

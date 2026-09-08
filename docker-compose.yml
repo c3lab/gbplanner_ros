@@ -31,6 +31,13 @@ x-common-volumes: &common_volumes
   # ---- gz Fuel model cache; see the Makefile note about pre-creating it ----
   - ${ROOT_DIR}/bootstrap/.cache/gz:/root/.gz
 
+  # ---- subt_cave_sim tiles, for the DARPA cave worlds ----
+  # 3.9 GB with git-lfs, so referenced rather than vendored. SUBT_CAVE_SIM
+  # defaults to the ROS 1 checkout, which already has them; point it elsewhere
+  # or use world:=cave_box, the primitives-only cave that ships in
+  # gbplanner_gz_sim and needs none of this.
+  - ${SUBT_CAVE_SIM:-/home/santal/git/gbplanner_ros/bootstrap/sim/subt_cave_sim}:/opt/subt_cave_sim:ro
+
 x-gui-env: &gui_env
   DISPLAY: ${DISPLAY}
   XAUTHORITY: ${XAUTHORITY:-/root/.Xauthority}
