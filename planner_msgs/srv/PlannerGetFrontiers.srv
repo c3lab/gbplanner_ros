@@ -1,0 +1,18 @@
+# Return the frontier vertices of the global graph, scored and ranked the way
+# Rrg::calculateGlobalPath ranks its candidates -- best first.
+
+# If True, run one local sampling + gain evaluation pass first and merge its
+# frontiers into the global graph, so the call stands on its own without
+# auto_planning having ever run. Costs a full local RRG build (seconds), and
+# resets the local graph, which the next planner iteration would rebuild
+# anyway.
+bool force_update
+# If True, report the gains cached by the last planner iteration instead of
+# re-evaluating them. Cheap, but frontiers grafted into the global graph since
+# that iteration still carry a zero gain and will rank last for no reason.
+bool skip_gain_refresh
+---
+std_msgs/Header header
+bool success
+# Sorted by exp_gain, descending.
+planner_msgs/FrontierPoint[] frontiers

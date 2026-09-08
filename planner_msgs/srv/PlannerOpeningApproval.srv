@@ -1,0 +1,7 @@
+int32 APPROVED = 0
+int32 REJECTED = 1
+int32 RE_EVALUATE = 2
+
+int32 approval
+
+---

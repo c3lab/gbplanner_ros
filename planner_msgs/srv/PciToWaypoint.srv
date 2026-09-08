@@ -1,0 +1,6 @@
+# Force the robot to go to a waypoint
+std_msgs/Header header
+
+# Waypoint to go to.
+geometry_msgs/Pose waypoint
+---

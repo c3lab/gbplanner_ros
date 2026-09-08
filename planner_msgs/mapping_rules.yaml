@@ -1,0 +1,140 @@
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_srv'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerSrv'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_global'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerGlobal'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_search'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerSearch'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_homing'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerHoming'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_set_homing_pos'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerSetHomingPos'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_geofence'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerGeofence'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_request_path'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerRequestPath'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'pci_trigger'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PciTrigger'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'pci_homing_trigger'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PciHomingTrigger'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'pci_set_homing_pos'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PciSetHomingPos'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'pci_initialization'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PciInitialization'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'pci_search'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PciSearch'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'pci_global'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PciGlobal'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'pci_stop'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PciStop'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'pci_geofence'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PciGeofence'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'pci_to_waypoint'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PciToWaypoint'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_set_global_bound'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerSetGlobalBound'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_set_vel'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerSetVel'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_set_exp_mode'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerSetExpMode'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_string_trigger'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerStringTrigger'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_set_search_mode'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerSetSearchMode'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_go_to_waypoint'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerGoToWaypoint'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_dynamic_global_bound'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerDynamicGlobalBound'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_set_planning_mode'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerSetPlanningMode'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_opening_approval'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerOpeningApproval'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_get_frontiers'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerGetFrontiers'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_validate_frontiers'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerValidateFrontiers'
+-
+  ros1_package_name: 'planner_msgs'
+  ros1_service_name: 'planner_get_target_costs'
+  ros2_package_name: 'planner_msgs'
+  ros2_service_name: 'PlannerGetTargetCosts'

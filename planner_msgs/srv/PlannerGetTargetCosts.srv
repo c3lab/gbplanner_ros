@@ -1,0 +1,12 @@
+# Score a batch of arbitrary points by what it would cost this robot to reach
+# them, without moving it. Intended as the cost matrix of a multi-robot task
+# allocator: ask every robot about the same points, then assign.
+#
+# One Dijkstra covers the whole batch, so N targets cost barely more than one.
+
+geometry_msgs/Point[] targets
+---
+std_msgs/Header header
+bool success
+# One entry per request target, in the same order.
+planner_msgs/TargetCost[] costs

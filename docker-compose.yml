@@ -1,0 +1,132 @@
+x-common-volumes: &common_volumes
+  - /tmp/.X11-unix:/tmp/.X11-unix
+  - ~/.Xauthority:/root/.Xauthority
+  - ${SSH_AUTH_SOCK}:/ssh-agent
+
+  # ---- Tier B: first-party packages, edited on the host ----
+  # Bind-mounted rather than copied so a source edit needs at most a `colcon
+  # build --packages-select`, never an image rebuild. The in-container workspace
+  # path is deliberately identical to the ROS 1 repo's.
+  - ${ROOT_DIR}/planner_msgs:/workspace/gbplanner3_ws/src/exploration/planner_msgs
+  - ${ROOT_DIR}/planner_semantic_msgs:/workspace/gbplanner3_ws/src/exploration/planner_semantic_msgs
+  - ${ROOT_DIR}/kdtree:/workspace/gbplanner3_ws/src/exploration/kdtree
+  - ${ROOT_DIR}/planner_common:/workspace/gbplanner3_ws/src/exploration/planner_common
+  - ${ROOT_DIR}/map_manager:/workspace/gbplanner3_ws/src/exploration/map_manager
+  - ${ROOT_DIR}/planner_control_interface:/workspace/gbplanner3_ws/src/exploration/planner_control_interface
+  - ${ROOT_DIR}/gbplanner:/workspace/gbplanner3_ws/src/exploration/gbplanner
+  - ${ROOT_DIR}/gbplanner_ui:/workspace/gbplanner3_ws/src/exploration/gbplanner_ui
+  - ${ROOT_DIR}/sim/gbplanner_gz_sim:/workspace/gbplanner3_ws/src/sim/gbplanner_gz_sim
+  - ${ROOT_DIR}/sim/gbplanner_gz_control:/workspace/gbplanner3_ws/src/sim/gbplanner_gz_control
+  - ${ROOT_DIR}/tools:/workspace/tools
+  - ${ROOT_DIR}/test:/workspace/test
+
+  # ---- Tier C: third-party packages that depend on first-party ones ----
+  - ${ROOT_DIR}/bootstrap/exploration:/workspace/gbplanner3_ws/src/exploration/third_party
+
+  # ---- colcon artefacts, kept on the host so they survive --rm ----
+  - ${ROOT_DIR}/bootstrap/gbplanner3_ws/build:/workspace/gbplanner3_ws/build
+  - ${ROOT_DIR}/bootstrap/gbplanner3_ws/install:/workspace/gbplanner3_ws/install
+  - ${ROOT_DIR}/bootstrap/gbplanner3_ws/log:/workspace/gbplanner3_ws/log
+
+  # ---- gz Fuel model cache; see the Makefile note about pre-creating it ----
+  - ${ROOT_DIR}/bootstrap/.cache/gz:/root/.gz
+
+x-gui-env: &gui_env
+  DISPLAY: ${DISPLAY}
+  XAUTHORITY: ${XAUTHORITY:-/root/.Xauthority}
+  SSH_AUTH_SOCK: /ssh-agent
+  # ROS 2 has no master. Robots are separated by namespace inside one DDS domain
+  # (so they can still discover each other) or by domain id for hard isolation.
+  ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+  # Container toolkit defaults to compute,utility only. Without "graphics" here,
+  # libGL cannot see the NVIDIA ICD and silently falls back to Mesa llvmpipe
+  # (CPU software rendering) for gz/rviz2/OGRE.
+  NVIDIA_DRIVER_CAPABILITIES: all
+  # Hybrid Intel+NVIDIA laptops (Optimus): the X server is usually driven by the
+  # Intel iGPU, so GLX defaults to it even with the NVIDIA libs present. PRIME
+  # render offload forces GL to route through the NVIDIA vendor lib.
+  __NV_PRIME_RENDER_OFFLOAD: "1"
+  __GLX_VENDOR_LIBRARY_NAME: nvidia
+
+services:
+  base:
+    image: gbplanner:${ROS_DISTRO}-${GBPLANNER3_VERSION}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.base
+      args:
+        ROS_DISTRO: ${ROS_DISTRO}
+    network_mode: host
+    ipc: host
+    privileged: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    stdin_open: true
+    tty: true
+    environment: *gui_env
+    volumes: *common_volumes
+
+  # vcs import of the Tier C sources into bootstrap/. No build here - it needs
+  # the ssh-agent, and keeping it separate means `make build-ws` can be re-run
+  # offline.
+  bootstrap:
+    extends: base
+    container_name: gbplanner_ros2-bootstrap
+    volumes:
+      - ${SSH_AUTH_SOCK}:/ssh-agent
+      - ${ROOT_DIR}:/workspace/src
+      - ${ROOT_DIR}/bootstrap:/workspace/bootstrap
+      - ${ROOT_DIR}/docker/bootstrap.sh:/workspace/bootstrap.sh
+    command: bash -ci "/workspace/bootstrap.sh"
+
+  # Full workspace build. --symlink-install so YAML / BT XML / .rviz / launch
+  # edits take effect with no rebuild at all.
+  build-ws:
+    extends: base
+    container_name: gbplanner_ros2-build-ws
+    command: >
+      bash -ci "source /opt/ros/${ROS_DISTRO}/setup.bash &&
+      source /opt/deps_ws/install/setup.bash &&
+      cd /workspace/gbplanner3_ws &&
+      colcon build --merge-install --symlink-install
+        --cmake-args -DCMAKE_BUILD_TYPE=Release -Wno-dev"
+
+  dev:
+    extends: base
+    container_name: gbplanner_ros2-dev
+    command: bash
+
+  # Incremental rebuild of a single package, under exactly the environment and
+  # flags build-ws uses, so the two never produce different install trees.
+  rebuild:
+    extends: base
+    container_name: gbplanner_ros2-rebuild
+    command: >
+      bash -ci "source /opt/ros/${ROS_DISTRO}/setup.bash &&
+      source /opt/deps_ws/install/setup.bash &&
+      cd /workspace/gbplanner3_ws &&
+      colcon build --merge-install --symlink-install
+        --packages-select ${REBUILD_PKG}
+        --cmake-args -DCMAKE_BUILD_TYPE=Release -Wno-dev"
+
+  run:
+    extends: base
+    container_name: gbplanner_ros2-run
+    command: >
+      bash -ci "source /workspace/gbplanner3_ws/install/setup.bash &&
+      ros2 launch gbplanner ${LAUNCH_FILE}"
+
+  # One namespaced gbplanner stack plus the gz simulation, sim clock on.
+  # Started by `make run-sim <namespace>`.
+  run-sim:
+    extends: base
+    container_name: gbplanner_ros2-${NAMESPACE}
+    command: >
+      bash -ci "source /workspace/gbplanner3_ws/install/setup.bash &&
+      ros2 launch gbplanner sim_gbplanner.launch.py
+        namespace:=${NAMESPACE} rviz:=${RVIZ:-true} use_sim_time:=true"

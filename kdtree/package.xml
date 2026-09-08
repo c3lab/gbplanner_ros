@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>kdtree</name>
+  <version>0.0.0</version>
+  <description>k-d tree used for nearest-neighbour queries in the planner graph.</description>
+
+  <maintainer email="sant.gabriele02@gmail.com">Gabriele Santangelo</maintainer>
+  <author>Andreas Bircher</author>
+  <author>John Tsiombikas</author>
+  <author>Tamas Nepusz</author>
+
+  <license>TBD</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

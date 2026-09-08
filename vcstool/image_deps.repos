@@ -1,0 +1,24 @@
+# Tier A - third-party sources with ZERO first-party dependencies. These are
+# cloned and built INSIDE the docker image (/opt/deps_ws) by docker/Dockerfile.base.
+# Changing a pin here means an image rebuild, which is the point: nothing in this
+# file depends on gbplanner's own packages, so it does not churn.
+#
+# https:// (not git@) on purpose: the image build has no ssh-agent.
+repositories:
+  voxblox:
+    type: git
+    url: https://github.com/GabrieleSantangelo/voxblox-ros2.git
+    # Branch `gbplanner`, NOT master. Master is forked from ethz-asl upstream and
+    # is missing the integrator that the ROS 1 side actually runs
+    # (feature/new_abort_criterion_for_fast_integrator + the ntnu esdf_colorization
+    # commits). Without it, clearing_ray_weight_factor is ignored and TSDF colour
+    # blending is live, which silently carves obstacles out of the map and breaks
+    # map_manager's camera-annotation flag. See docs/VOXBLOX_FORK.md.
+    version: gbplanner
+  mav_comm:
+    type: git
+    url: https://github.com/ethz-asl/mav_comm.git
+    # Upstream's own ROS 2 branch. Verified to colcon-build clean on Jazzy.
+    # Provides mav_msgs (conversions.hpp / eigen_mav_msgs.hpp / default_topics.hpp)
+    # that pci_general needs. There is no ros-jazzy-mav-msgs binary.
+    version: ros2

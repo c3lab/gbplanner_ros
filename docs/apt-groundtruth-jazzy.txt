@@ -1,0 +1,152 @@
+### DISTRO/OS
+Ubuntu 24.04.3 LTS  ROS_DISTRO=jazzy
+### CORE
+OK        ros-jazzy-rclcpp    28.1.21-1noble.20260615.133124
+OK        ros-jazzy-rclcpp-action    28.1.21-1noble.20260615.145316
+OK        ros-jazzy-rclcpp-components    28.1.21-1noble.20260615.140757
+OK        ros-jazzy-tf2    0.36.21-1noble.20260615.130312
+OK        ros-jazzy-tf2-ros    0.36.21-1noble.20260615.145818
+OK        ros-jazzy-tf2-eigen    0.36.21-1noble.20260615.151510
+OK        ros-jazzy-tf2-geometry-msgs    0.36.21-1noble.20260615.151523
+OK        ros-jazzy-tf2-sensor-msgs    0.36.21-1noble.20260615.151025
+OK        ros-jazzy-pcl-ros    2.6.4-1noble.20260615.153330
+OK        ros-jazzy-pcl-conversions    2.6.4-1noble.20260615.140415
+OK        ros-jazzy-cv-bridge    4.1.0-1noble.20260615.144656
+OK        ros-jazzy-interactive-markers    2.5.5-1noble.20260615.152342
+OK        ros-jazzy-visualization-msgs    5.3.8-1noble.20260615.114026
+OK        ros-jazzy-nav-msgs    5.3.8-1noble.20260615.112021
+OK        ros-jazzy-sensor-msgs    5.3.8-1noble.20260615.112429
+OK        ros-jazzy-std-srvs    5.3.8-1noble.20260615.102935
+OK        ros-jazzy-ament-index-cpp    1.8.4-1noble.20260519.011052
+OK        ros-jazzy-message-filters    4.11.17-1noble.20260615.140122
+OK        ros-jazzy-image-transport    5.1.8-1noble.20260615.144252
+### GRID_MAP
+OK        ros-jazzy-grid-map    2.2.2-2noble.20260615.182823
+OK        ros-jazzy-grid-map-core    2.2.2-2noble.20260225.231548
+OK        ros-jazzy-grid-map-ros    2.2.2-2noble.20260615.164604
+OK        ros-jazzy-grid-map-msgs    2.2.2-2noble.20260615.140323
+OK        ros-jazzy-grid-map-filters    2.2.2-2noble.20260615.172812
+OK        ros-jazzy-grid-map-cv    2.2.2-2noble.20260615.163042
+OK        ros-jazzy-grid-map-rviz-plugin    2.2.2-2noble.20260615.172152
+### BT / OCTOMAP / MISC
+OK        ros-jazzy-behaviortree-cpp    4.9.0-1noble.20260615.161133
+OK        ros-jazzy-behaviortree-cpp-v3    3.8.8-1noble.20260615.161138
+OK        ros-jazzy-octomap    1.10.0-4noble.20260225.055711
+OK        ros-jazzy-octomap-msgs    2.0.1-1noble.20260615.112219
+OK        ros-jazzy-octomap-ros    0.4.4-1noble.20260615.130631
+OK        ros-jazzy-dynamic-edt-3d    1.10.0-4noble.20260225.135315
+OK        ros-jazzy-backward-ros    1.0.8-1noble.20260225.051215
+OK        ros-jazzy-pluginlib    5.4.5-1noble.20260604.025205
+OK        ros-jazzy-eigen-stl-containers    1.1.0-1noble.20260225.233822
+OK        ros-jazzy-nav2-msgs    1.3.12-1noble.20260615.145957
+### RVIZ
+OK        ros-jazzy-rviz2    14.1.22-1noble.20260615.174609
+OK        ros-jazzy-rviz-common    14.1.22-1noble.20260615.150842
+OK        ros-jazzy-rviz-rendering    14.1.22-1noble.20260608.080750
+OK        ros-jazzy-rviz-default-plugins    14.1.22-1noble.20260615.153429
+OK        ros-jazzy-rviz-ogre-vendor    14.1.22-1noble.20260608.072426
+OK        ros-jazzy-rviz-visual-tools    4.1.4-4noble.20260615.175111
+### GZ / SIM
+OK        ros-jazzy-ros-gz    1.0.22-1noble.20260616.074726
+OK        ros-jazzy-ros-gz-bridge    1.0.22-1noble.20260615.142443
+OK        ros-jazzy-ros-gz-sim    1.0.22-1noble.20260615.173223
+OK        ros-jazzy-ros-gz-image    1.0.22-1noble.20260615.145009
+OK        ros-jazzy-ros-gz-interfaces    1.0.22-1noble.20260615.112415
+OK        ros-jazzy-gz-sim-vendor    0.0.10-1noble.20260604.111001
+OK        ros-jazzy-gz-transport-vendor    0.0.7-1noble.20260423.081526
+OK        ros-jazzy-gz-math-vendor    0.0.9-1noble.20260422.120700
+OK        ros-jazzy-sdformat-urdf    1.0.2-1noble.20260604.105352
+OK        ros-jazzy-robot-state-publisher    3.3.4-1noble.20260615.150609
+OK        ros-jazzy-xacro    2.1.1-1noble.20260519.011123
+OK        ros-jazzy-joint-state-publisher    2.4.1-1noble.20260615.140100
+### MAV / TRAJ
+MISSING   ros-jazzy-mav-msgs
+OK        ros-jazzy-trajectory-msgs    5.3.8-1noble.20260615.112856
+OK        ros-jazzy-nav2-bringup    1.3.12-1noble.20260616.082701
+OK        ros-jazzy-mavros-msgs    2.14.0-1noble.20260615.130828
+### TEST / TOOLING
+OK        ros-jazzy-ament-cmake    2.5.6-2noble.20260225.222913
+OK        ros-jazzy-ament-cmake-gtest    2.5.6-2noble.20260225.145055
+OK        ros-jazzy-ament-lint-auto    0.17.5-1noble.20260410.080333
+OK        ros-jazzy-rosbag2    0.26.11-1noble.20260616.084050
+OK        ros-jazzy-rosbag2-storage-mcap    0.26.11-1noble.20260616.074830
+OK        ros-jazzy-ros2bag    0.26.11-1noble.20260616.083858
+OK        ros-jazzy-launch-testing    3.4.11-1noble.20260603.150907
+OK        ros-jazzy-launch-testing-ament-cmake    3.4.11-1noble.20260603.151149
+OK        python3-colcon-common-extensions    0.3.0-100
+### SYSTEM LIBS
+OK        libeigen3-dev    3.4.0-4build0.1
+OK        libpcl-dev    1.14.0+dfsg-1
+OK        libgoogle-glog-dev    0.6.0-2.1build1
+OK        libgflags-dev    2.2.2-2build1
+OK        qtbase5-dev    5.15.13+dfsg-1ubuntu1
+OK        libboost-all-dev    1.83.0.1ubuntu2
+OK        protobuf-compiler    3.21.12-8.2ubuntu0.3
+OK        libprotobuf-dev    3.21.12-8.2ubuntu0.3
+OK        libopencv-dev    4.6.0+dfsg-13.1ubuntu1
+OK        libnlopt-dev    2.7.1-5build2
+### gz-sim-vendor deps (tells the real Gazebo version)
+Version: 0.0.10-1noble.20260604.111001
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libprotobuf32t64 (>= 3.21.12), libqt5core5t64 (>= 5.15.1), libqt5gui5t64 (>= 5.2.0) | libqt5gui5-gles (>= 5.2.0), libqt5qml5 (>= 5.0.2), libqt5quick5 (>= 5.0.2) | libqt5quick5-gles (>= 5.0.2), libqt5widgets5t64 (>= 5.0.2), libstdc++6 (>= 13.1), libtinyxml2-10 (>= 10.0.0), ros-jazzy-gz-common-vendor, ros-jazzy-gz-fuel-tools-vendor, ros-jazzy-gz-gui-vendor, ros-jazzy-gz-math-vendor, ros-jazzy-gz-msgs-vendor, ros-jazzy-gz-physics-vendor, ros-jazzy-gz-plugin-vendor, ros-jazzy-gz-rendering-vendor, ros-jazzy-gz-sensors-vendor, ros-jazzy-gz-transport-vendor, ros-jazzy-sdformat-vendor, freeglut3-dev, libbenchmark-dev, libfreeimage-dev, libglew-dev, libprotobuf-dev, libprotoc-dev, libtinyxml2-dev, libxi-dev, libxmu-dev, protobuf-compiler, pybind11-dev, qml-module-qt-labs-folderlistmodel, qml-module-qt-labs-settings, qml-module-qtgraphicaleffects, qml-module-qtquick-controls, qml-module-qtquick-controls2, qml-module-qtquick-dialogs, qml-module-qtquick-layouts, qml-module-qtquick2, qtbase5-dev, qtdeclarative5-dev, ros-jazzy-gz-cmake-vendor, ros-jazzy-gz-tools-vendor, ros-jazzy-gz-utils-vendor, uuid-dev, ros-jazzy-ros-workspace
+### gz harmonic direct packages
+gz-harmonic -> MISSING
+gz-sim8 -> MISSING
+gz-sim8-cli -> MISSING
+libgz-sim8-dev -> MISSING
+### ros_gz_sim depends
+Depends: libc6 (>= 2.38), libconsole-bridge1.0 (>= 1.0.1+dfsg2), libgcc-s1 (>= 3.3.1), libgflags2.2 (>= 2.2.2), libprotobuf32t64 (>= 3.21.12), libstdc++6 (>= 13.1), ros-jazzy-gz-common-vendor, ros-jazzy-gz-msgs-vendor, ros-jazzy-gz-sim-vendor, ros-jazzy-gz-transport-vendor, ros-jazzy-sdformat-vendor, libcli11-dev, libgflags-dev, ros-jazzy-ament-index-python, ros-jazzy-builtin-interfaces, ros-jazzy-geometry-msgs, ros-jazzy-gz-math-vendor, ros-jazzy-launch, ros-jazzy-launch-ros, ros-jazzy-rclcpp, ros-jazzy-rclcpp-action, ros-jazzy-rclcpp-components, ros-jazzy-rcpputils, ros-jazzy-ros-gz-interfaces, ros-jazzy-ros2pkg, ros-jazzy-simulation-interfaces, ros-jazzy-std-msgs, ros-jazzy-tf2, ros-jazzy-tf2-ros, ros-jazzy-ros-workspace
+### rviz_common Qt
+Depends: libc6 (>= 2.38), libconsole-bridge1.0 (>= 1.0.1+dfsg2), libgcc-s1 (>= 3.3.1), libqt5core5t64 (>= 5.15.1), libqt5gui5t64 (>= 5.2.0) | libqt5gui5-gles (>= 5.2.0), libqt5widgets5t64 (>= 5.14.1), libstdc++6 (>= 13.1), libtinyxml2-10 (>= 10.0.0), libyaml-cpp0.8 (>= 0.7.0), ros-jazzy-rviz-ogre-vendor, libqt5gui5t64, libqt5opengl5t64, libqt5svg5, qtbase5-dev, ros-jazzy-geometry-msgs, ros-jazzy-message-filters, ros-jazzy-pluginlib, ros-jazzy-rclcpp, ros-jazzy-resource-retriever, ros-jazzy-rviz-rendering, ros-jazzy-sensor-msgs, ros-jazzy-std-msgs, ros-jazzy-std-srvs, ros-jazzy-tf2, ros-jazzy-tf2-ros, ros-jazzy-tinyxml2-vendor, ros-jazzy-urdf, ros-jazzy-yaml-cpp-vendor, ros-jazzy-ros-workspace
+### behaviortree_cpp headers pkg
+Version: 4.9.0-1noble.20260615.161133
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 3.3.1), libsqlite3-0 (>= 3.10.0), libstdc++6 (>= 13.1), libtinyxml2-10 (>= 10.0.0), libzmq5 (>= 4.0.1+dfsg), cppzmq-dev, libsqlite3-dev, libtinyxml2-dev, libzmq3-dev, ros-jazzy-ament-index-cpp, ros-jazzy-rclcpp, ros-jazzy-tinyxml2-vendor, ros-jazzy-ros-workspace
+### extras
+ros-jazzy-rosidl-default-generators -> 1.6.1-1noble.20260612.064900
+ros-jazzy-rosidl-default-runtime -> 1.6.1-1noble.20260615.090842
+ros-jazzy-eigen3-cmake-module -> 0.3.1-1noble.20260603.150413
+ros-jazzy-tf2-kdl -> 0.36.21-1noble.20260615.151506
+ros-jazzy-nav2-util -> 1.3.12-1noble.20260615.152147
+ros-jazzy-topic-tools -> 1.3.4-1noble.20260615.145554
+ros-jazzy-ros2launch -> 0.26.12-1noble.20260615.173305
+ros-jazzy-rmw-cyclonedds-cpp -> 2.2.3-1noble.20260615.123728
+ros-jazzy-rmw-fastrtps-cpp -> 8.4.4-1noble.20260615.124621
+ros-jazzy-domain-bridge -> 0.5.0-5noble.20260615.164528
+ros-jazzy-foxglove-bridge -> 3.4.1-1noble.20260615.172953
+python3-rosbags -> MISSING
+
+### VERIFIED CONCLUSIONS (measured in a throwaway ros:jazzy container, NOT guessed)
+- Base image: ros:jazzy == Ubuntu 24.04 noble.
+- EVERY dependency gbplanner needs exists as ros-jazzy-* EXCEPT mav_msgs (ros-jazzy-mav-msgs: MISSING). mav_comm must be ported or replaced.
+- behaviortree_cpp on jazzy is 4.9.0 (repo uses 4.7.0 from source) -> newer, same v4 API family. ros-jazzy-behaviortree-cpp-v3 (3.8.8) also exists if ever needed.
+- grid_map 2.2.2 fully available (core/ros/msgs/filters/cv/rviz-plugin).
+- rviz2 14.1.22, rviz_common links Qt5 (libqt5*t64, qtbase5-dev) -> rviz2 plugins are Qt5, same as the ROS1 panel.
+- Gazebo: available two ways.
+    (a) ros-jazzy-gz-*-vendor packages (gz-sim-vendor 0.0.10) - bundles Harmonic, pulled in by ros-jazzy-ros-gz-sim.
+    (b) osrf apt repo package `gz-harmonic` (gz-sim8) - this is what the dghost_gazebo_sim reference Dockerfile does.
+  Jazzy's official pairing is Gazebo Harmonic (gz-sim8). Garden (used by the ROS1 side) is NOT the jazzy pairing.
+- ros-gz 1.0.22 (ros_gz_bridge / ros_gz_sim / ros_gz_image / ros_gz_interfaces) all present.
+- octomap 1.10.0 + dynamic_edt_3d present.
+- rosbag2 0.26.11 + rosbag2-storage-mcap present. python3-rosbags is NOT an apt package -> pip install rosbags inside the container (venv or --break-system-packages) for .bag -> rosbag2 conversion.
+
+### CORRECTION — mav_msgs IS available on ROS 2 (verified by building it)
+The earlier "MISSING" line refers ONLY to the apt binary `ros-jazzy-mav-msgs`, which does not exist.
+The UPSTREAM repo has an official ROS 2 branch:
+    https://github.com/ethz-asl/mav_comm.git  branch: ros2  (HEAD abc21fb, 2023-12-08)
+    packages: mav_comm (metapackage), mav_msgs, mav_planning_msgs, mav_state_machine_msgs, mav_system_msgs
+VERIFIED IN A ros:jazzy CONTAINER: `colcon build --packages-select mav_msgs` succeeds (5.7s, exit 0)
+with cmake 3.28.3 on Ubuntu 24.04. Its CMakeLists already guards CMP0148 for cmake > 3.27.
+
+mav_msgs (ros2 branch) provides EXACTLY the symbols pci_general uses:
+  include/mav_msgs/conversions.hpp     -> msgMultiDofJointTrajectoryPointFromEigen (line 486)
+  include/mav_msgs/eigen_mav_msgs.hpp  -> struct EigenTrajectoryPoint (line 163)
+  include/mav_msgs/default_topics.hpp  -> COMMAND_TRAJECTORY = "command/trajectory" (line 44)
+  msg/Status.msg                       -> mav_msgs::msg::Status
+=> DECISION: vcs-import ethz-asl/mav_comm @ ros2 as a source dependency. Do NOT fork, do NOT rewrite pci_general
+   against raw trajectory_msgs.
+
+Porting consequences for pci_general (mechanical):
+  #include <mav_msgs/conversions.h>     -> <mav_msgs/conversions.hpp>
+  #include <mav_msgs/default_topics.h>  -> <mav_msgs/default_topics.hpp>
+  #include <mav_msgs/Status.h>          -> <mav_msgs/msg/status.hpp>
+  mav_msgs::Status                      -> mav_msgs::msg::Status
+  mav_msgs::EigenTrajectoryPoint        -> unchanged (plain C++ struct, not a generated type)

@@ -1,0 +1,18 @@
+# Tier C - third-party packages that DEPEND on gbplanner's own packages
+# (planner_common / map_manager / planner_msgs). They are cloned into bootstrap/
+# and bind-mounted, never baked, so editing a .srv does not force an image rebuild.
+#
+# git@ (not https) on purpose: `make bootstrap` forwards the host ssh-agent.
+repositories:
+  exploration/adaptive_obb_ros2:
+    type: git
+    url: git@github.com:GabrieleSantangelo/adaptive_obb_ros2.git
+    version: main
+  exploration/pci_general_ros2:
+    type: git
+    url: git@github.com:GabrieleSantangelo/pci_general_ros2.git
+    version: main
+  exploration/manhole_detector_ros2:
+    type: git
+    url: git@github.com:GabrieleSantangelo/manhole_detector_ros2.git
+    version: main
