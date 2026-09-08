@@ -99,12 +99,18 @@ def generate_launch_description() -> LaunchDescription:
                     # budget expires. Identity by default; point it at the
                     # vehicle's own landing service to arm it.
                     ("land_srv", land_service),
-                    # NOT remappable into a namespace, absolute in C++:
-                    #   /robot_status  (subscribed here, published absolute by
-                    #     the PCI unless the remap below moves it -- see the
-                    #     note on the PCI node)
+                    # These two are absolute in C++, and the PCI pulls its own
+                    # ends of them back to relative names. Without the matching
+                    # pull here the pair straddles the namespace boundary: under
+                    # namespace:=robot0 the PCI would publish /robot0/robot_status
+                    # while the planner listened on /robot_status, and battery-time
+                    # reporting would never connect. ROS 1 had the same asymmetry
+                    # because its launch only remapped the publisher.
+                    ("/robot_status", "robot_status"),
+                    ("/gbplanner_path", "gbplanner_path"),
+                    # Left absolute on purpose: published by a node this launch
+                    # does not start, so there is no second end to keep in step.
                     #   /traversability_estimation/untraversable_polygon
-                    #   /gbplanner_path (published, debug service only)
                 ],
             ),
             Node(
@@ -132,11 +138,17 @@ def generate_launch_description() -> LaunchDescription:
                     ("/gbplanner_is_homing", "gbplanner_is_homing"),
                     ("/robot_status", "robot_status"),
                     ("/move_base_simple/goal", local_navigation_goal_topic),
-                    # Left absolute, as in ROS 1, so they break under a
-                    # namespace: the clients /gbplanner/set_planning_trigger_mode
-                    # and /gbplanner/get_inspection_path, and the subscriptions
-                    # /matrice/status, /pci_general/path_following and
-                    # /global_planner/waypoint_request.
+                    # Both servers live on gbplanner_node under a relative
+                    # name, so these clients have to follow it into the
+                    # namespace or the inspection trigger and the trigger-mode
+                    # switch never reach a namespaced planner.
+                    ("/gbplanner/get_inspection_path", "gbplanner/get_inspection_path"),
+                    ("/gbplanner/set_planning_trigger_mode",
+                     "gbplanner/set_planning_trigger_mode"),
+                    # Left absolute: the other end of each of these belongs to a
+                    # node this launch does not start.
+                    #   /matrice/status, /pci_general/path_following,
+                    #   /global_planner/waypoint_request, /gazebo/unpause_physics
                 ],
             ),
             Node(
