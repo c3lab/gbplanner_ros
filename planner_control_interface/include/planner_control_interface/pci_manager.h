@@ -1,6 +1,8 @@
 #ifndef PCI_MANAGER_H_
 #define PCI_MANAGER_H_
 
+#include <chrono>
+
 #include <eigen3/Eigen/Dense>
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
@@ -25,12 +27,51 @@ typedef Eigen::Matrix<double, 5, 1> StateVec;
 
 #define global_verbosity Verbosity::WARN
 #define param_verbosity Verbosity::SILENT
+
+// Blocks until an outgoing service call completes.  Safe from any callback in
+// PCIManager::mainCallbackGroup(): every client is created in
+// PCIManager::clientCallbackGroup(), a different (reentrant) group, and the
+// node is spun by a MultiThreadedExecutor, so the response is delivered on
+// another thread.
+template <typename FutureT>
+bool waitForResponse(FutureT& future) {
+  while (rclcpp::ok()) {
+    if (future.wait_for(std::chrono::milliseconds(20)) ==
+        std::future_status::ready)
+      return true;
+  }
+  return false;
+}
+
+// Returns the response, or a null pointer where ros::ServiceClient::call()
+// would have returned false.  In particular an unconnected client fails
+// straight away, so a call to a service nobody advertises cannot hang.
+template <typename ClientT, typename RequestT>
+typename ClientT::element_type::SharedResponse callService(
+    const ClientT& client, const RequestT& request) {
+  if (!client->service_is_ready()) return nullptr;
+  typename ClientT::element_type::SharedFuture future =
+      client->async_send_request(request).future.share();
+  if (!waitForResponse(future)) return nullptr;
+  return future.get();
+}
+
 class PCIManager {
  public:
   explicit PCIManager(rclcpp::Node* node)
       : node_(node),
         pci_status_(PCIStatus::kReady),
         force_stop_(false) {
+    // ROS 1 pumped every callback of both classes from the single
+    // ros::spinOnce() inside PlannerControlInterface::run().  One mutually
+    // exclusive group shared by both classes reproduces that serialisation;
+    // the clients need a group of their own so a blocking wait inside a
+    // callback of the main group can still be answered.
+    main_cb_group_ =
+        node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    client_cb_group_ =
+        node_->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+
     trajectory_vis_pub_ =
         node_->create_publisher<visualization_msgs::msg::MarkerArray>(
             "pci_command_trajectory_vis", rclcpp::QoS(10));
@@ -101,8 +142,18 @@ class PCIManager {
 
   void stopPCI() { force_stop_ = true; }
 
+  const rclcpp::CallbackGroup::SharedPtr& mainCallbackGroup() const {
+    return main_cb_group_;
+  }
+  const rclcpp::CallbackGroup::SharedPtr& clientCallbackGroup() const {
+    return client_cb_group_;
+  }
+
  protected:
   rclcpp::Node* node_;
+
+  rclcpp::CallbackGroup::SharedPtr main_cb_group_;
+  rclcpp::CallbackGroup::SharedPtr client_cb_group_;
 
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
       trajectory_vis_pub_;
