@@ -89,7 +89,11 @@ void UAVPathFollowerNode::pathCallback(const nav_msgs::msg::Path & path)
     poses_.push_back(stamped.pose);
   }
   current_pose_index_ = 0;
-  RCLCPP_INFO(get_logger(), "New path with %zu poses.", poses_.size());
+  // Debug, not info. With pub_singple_wp set - which the shipped configs do -
+  // the control interface republishes a one-pose carrot path every 50 ms, so an
+  // info line here buries every other message in the launch at 20 Hz. The ROS 1
+  // follower has the equivalent line commented out for the same reason.
+  RCLCPP_DEBUG(get_logger(), "New path with %zu poses.", poses_.size());
 }
 
 void UAVPathFollowerNode::odometryCallback(const nav_msgs::msg::Odometry & odom)
