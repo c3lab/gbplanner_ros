@@ -1,0 +1,380 @@
+# ANYmal, planned for as a ground robot.
+#
+# Derived from c3lab/gbplanner_ros@anymal, gbplanner/config/anymal/, which is a
+# real deployment's configuration rather than a simulation one. rad()/deg()
+# expressions are expanded as everywhere else in this tree.
+#
+# The one thing that makes this config different from every other config here is
+# RobotParams.type: kGroundRobot. Upstream's own UGV demos ship kAerialRobot,
+# because kGroundRobot routes every sample and every edge through
+# Rrg::projectSampleEleMap, which needs a grid_map "elevation" layer on the
+# elevation_map topic - and nothing in gbplanner_ros publishes one. On a real
+# ANYmal it comes from ANYbotics' elevation_mapping. Here it comes from
+# gbplanner_elevation_map, which builds it from the robot's own point cloud.
+# Without that node this config plans nothing at all: with no layer,
+# projectSampleEleMap refuses every sample and the graph never leaves the root.
+#
+# Changed from c3lab's file: BoundedSpaceParams.Global (theirs is one room),
+# the sensor frame (gz prefixes links with the model name), and NoGainZones
+# (emptied). The blocks their file does not have - CameraAnnotationParams, the
+# inspection and manhole settings - are as the UGV config had them and are
+# inert, since annotate_map_with_camera and inspection_planning are false.
+#
+/**:
+  ros__parameters:
+      # Configurations for the exploration pipeline.
+      # For more details, please check comments in the params.h file and the wiki.
+      #-------------------------------------------------------------------------------
+      # ROBOT CONFIGURATION
+      #-------------------------------------------------------------------------------
+    RobotParams:
+      # kGroundRobot, and this is the whole point of this config. Every sample
+      # and every edge is projected onto the elevation layer: the sample's
+      # height is snapped to the terrain plus max_ground_height, and it is
+      # refused if any of the four footprint corners is steeper than
+      # max_inclination or has never been observed. That is what stops a ground
+      # robot being planned over a ledge it cannot see - under kAerialRobot,
+      # free space above a drop is just free space.
+      type:               kGroundRobot
+      # c3lab's values for the real ANYmal. The 0.8 in y is the planner's
+      # footprint, the stance width, not the width of the torso.
+      size:               [0.8, 0.8, 0.3]
+      size_extension_min: [0.0, 0.0, 0.0]
+      size_extension:     [0.2, 0.2, 0.2]
+      # 0.0, unlike the Husky's. Nothing has to be faked here: the sample's
+      # height comes from the terrain, not from the robot's current altitude.
+      center_offset:      [0.0, 0.0, 0.0]
+      relax_ratio:        0.5
+      bound_mode:         kExtendedBound
+      safety_extension:   [1.5, 1.5, 0.1]
+#-------------------------------------------------------------------------------
+# SENSOR CONFIGURATION
+#  sensor_list: Define a set of sensors relevant to the exploration task.
+#  rotations: ZYX order;
+#             all follows ROS convention (X-forward, Y-left, Z-Up).
+#-------------------------------------------------------------------------------
+    SensorParams:
+      sensor_list:      ["VLP16"]
+      VLP16:
+        type:           kLidar
+        # gz prefixes every link with the model name, so this is not the bare
+        # "lidar" c3lab's real robot publishes.
+        sensor_frame:   anymal/lidar
+        max_range:      20.0
+        center_offset:  [0.0, 0.0, 0.0]
+        rotations:      [0.0, 0.0, 0.0]
+        fov:            [6.283185307179586, 0.5235987755982988]  # was [rad(2.0*pi), rad(pi/6)]
+        resolution:     [0.08726646259971647, 0.08726646259971647]  # was [rad(5.0*pi/180), rad(5.0*pi/180)]
+        frontier_percentage_threshold: 0.01
+    CameraAnnotationParams:
+      sensor_list:      ["Cam"]
+      Cam:
+        type:           kLidar
+        # rot_lims:       [-1.57, 1.57]
+        rot_lims:       [-1.55, 1.55]
+        max_range:      2.0 #2.5
+        center_offset:  [0.0, 0.0, 0.0]
+        rotations:      [0.0, 0.0, 0.0]
+        fov:            [1.4660765716752369, 1.117010721276371]  # was [rad(84*pi/180.0), rad(64*pi/180.0)]
+        resolution:     [0.03490658503988659, 0.03490658503988659]  # was [rad(2.0*pi/180), rad(2.0*pi/180)]
+        frontier_percentage_threshold: 0.01
+#-------------------------------------------------------------------------------
+# SAMPLING SPACE CONFIGURATION
+#   Global: Strictly defined bounds for the whole environment.
+#   Local: Define a local space wrt current robot state for planning.
+#-------------------------------------------------------------------------------
+    BoundedSpaceParams:
+      Global:
+        # c3lab's is [-1, -4, -40.2] to [26, 30, 40], the room they fly in.
+        # Opened up to the worlds here, but still finite: an unbounded global
+        # space is what lets the planner chase gain straight out of the map.
+        type:           kCuboid
+        min_val:        [-500.0, -500.0, -50.0]
+        max_val:        [500.0, 500.0, 50.0]
+      Local:
+        # c3lab's +/- 20. The elevation map's window has to cover this, or the
+        # outer samples are refused by isInside() before their height is ever
+        # read; gbplanner_elevation_map's map_length is 44 m for that reason.
+        type:           kCuboid
+        min_val:        [-20.0, -20.0, -2.0]
+        max_val:        [20.0, 20.0, 2.0]
+        min_extension:  [-20.0, -20.0, -20.0]
+        max_extension:  [20.0, 20.0, 20.0]
+      LocalSearch:
+        type:           kCuboid
+        min_val:        [-50.0, -50.0, -10.0]
+        max_val:        [50.0, 50.0, 10.0]
+      LocalAdaptiveExp:
+        type:           kCuboid
+        min_val:        [-10.0, -10.0, -0.75]
+        max_val:        [10.0, 10.0, 0.75]
+    # No NoGainZones block at all. c3lab's file has none, and the UGV configs
+    # here carry a "behind the robot" zone that assumes a fixed start heading.
+    # Written as an absent key rather than an empty mapping: rcl's YAML parser
+    # does not accept "NoGainZones: {}" and misreads the nesting after it -
+    # "Cannot have a value before ros__parameters", forty lines further down.
+    RandomSamplerParams:
+      SamplerForExploration:
+        X:
+          pdf_type:       kUniform
+          sample_mode:    kLocal
+        Y:
+          pdf_type:       kUniform
+          sample_mode:    kLocal
+        Z:
+          # kUniform, not the kConst the UGV configs pin to the robot's own
+          # height. With ground projection the sampled z is replaced by the
+          # terrain height anyway, so the sampler only has to spread candidates
+          # over a vertical band the projection can pull back down.
+          pdf_type:       kUniform
+          sample_mode:    kLocal
+          std_val:        2.0
+        Heading:
+          pdf_type:       kUniform
+          sample_mode:    kManual
+          min_val:        -3.141592653589793  # was rad(-pi)
+          max_val:        3.141592653589793  # was rad(pi)
+        Pitch:
+          # pdf_type:       kUniform
+          # sample_mode:    kManual
+          # min_val:        rad(-pi/2)
+          # max_val:        rad(pi/2)
+          pdf_type:       kConst
+          sample_mode:    kManual
+          const_val:      0.0
+      SamplerForSearching:
+        X:
+          pdf_type:       kUniform
+          sample_mode:    kLocal
+        Y:
+          pdf_type:       kUniform
+          sample_mode:    kLocal
+        Z:
+          # kUniform, not the kConst the UGV configs pin to the robot's own
+          # height. With ground projection the sampled z is replaced by the
+          # terrain height anyway, so the sampler only has to spread candidates
+          # over a vertical band the projection can pull back down.
+          pdf_type:       kUniform
+          sample_mode:    kLocal
+          std_val:        2.0
+        Heading:
+          pdf_type:       kUniform
+          sample_mode:    kManual
+          min_val:        -3.141592653589793  # was rad(-pi)
+          max_val:        3.141592653589793  # was rad(pi)
+        Pitch:
+          # pdf_type:       kUniform
+          # sample_mode:    kManual
+          # min_val:        rad(-pi/2)
+          # max_val:        rad(pi/2)
+          pdf_type:       kConst
+          sample_mode:    kManual
+          const_val:      0.0
+      SamplerForAdaptiveExp:
+        X:
+          pdf_type:       kUniform
+          sample_mode:    kLocal
+        Y:
+          pdf_type:       kUniform
+          sample_mode:    kLocal
+        Z:
+          # kUniform, not the kConst the UGV configs pin to the robot's own
+          # height. With ground projection the sampled z is replaced by the
+          # terrain height anyway, so the sampler only has to spread candidates
+          # over a vertical band the projection can pull back down.
+          pdf_type:       kUniform
+          sample_mode:    kLocal
+          std_val:        2.0
+        Heading:
+          pdf_type:       kUniform
+          sample_mode:    kManual
+          min_val:        -3.141592653589793  # was rad(-pi)
+          max_val:        3.141592653589793  # was rad(pi)
+        Pitch:
+          # pdf_type:       kUniform
+          # sample_mode:    kManual
+          # min_val:        rad(-pi/2)
+          # max_val:        rad(pi/2)
+          pdf_type:       kConst
+          sample_mode:    kManual
+          const_val:      0.0
+    
+#-------------------------------------------------------------------------------
+# EXPLORATION CONFIGURATION
+# exp_sensor_list: sensors used to compute exploration gain.
+#-------------------------------------------------------------------------------
+    PlanningParams:
+      type:             kBasicExploration #kAdaptiveExploration, kBasicExploration
+      rr_mode:          kGraph
+      graph_building_mode: kBasic
+      exp_sensor_list:  ["VLP16"]
+      # exp_sensor_list:  ["CamExp"]
+      # exp_sensor_list:  ["CamF"]
+      inspection_sensor_list:  ["Cam"]
+      # no_gain_zones_list: ["g1"]
+      v_max:            0.5 # max velocity m/s
+      v_homing_max:     0.5 # max velocity m/s
+      yaw_rate_max:     0.3 # max angular velocity rad/s
+      yaw_tangent_correction: false # If true - all headings will be along the path segment
+      edge_length_min:  0.2
+      edge_length_max:  3.0
+      edge_overshoot:   0.0 # m - Account for possible tracking error by collision checking on an extended edge
+      num_vertices_max: 700.0 # 400 # graph building stops if these many vertices are added 
+      num_edges_max:    7000.0 # graph building stops if these many edges are added
+      num_loops_cutoff: 2000.0 # Maximum iterations in which no vertices or edges are added to the graph
+      num_loops_max:    7000.0 # Maximum iterations possible for graph building
+      nearest_range:    3.0 # The max range within which a new vertex can be connected to an existing vertex
+      nearest_range_min: 0.2 # >= edge_length_min
+      nearest_range_max: 3.0 # <= edge_length_max
+      use_current_state: true # If true, it will use the current state to plan from instead of the state provided by the PCI in the service call
+      use_ray_model_for_volumetric_gain: true # if false, will check voxel by voxel in the sensor frustum 
+      exp_gain_voxel_size: 0.8 # used if use_ray_model_for_volumetric_gain is false
+      # Gains:
+      path_length_penalty: 0.01 # 0.4
+      path_direction_penalty: 0.5
+      # true, where upstream's ugv/gzc/niosh_exploration says false. This is
+      # the one place this config leaves upstream on something that is not a
+      # robot dimension, and the reason is measured rather than argued.
+      #
+      # With false, Rrg::getBestPathSimplified refuses any best path whose
+      # direction differs from the running average by more than 120 degrees,
+      # and returns an EMPTY path instead - three times in a row, then it lets
+      # the fourth through and resets the counter. In a mine corridor the robot
+      # has to turn around, so the refusal fires constantly: measured live, 37
+      # direction changes and 38 empty paths over 122 planning calls. Each
+      # refusal costs a full planning cycle in which the control interface gets
+      # nothing, so the robot sits still, and every fourth one is accepted, so
+      # it lurches back the way it came. That is the "it stops, and stopping
+      # and restarting the planner fixes it" behaviour: the restart resets
+      # dir_change_count_.
+      #
+      # Upstream itself ships true for ugv/gzc/urban_exploration and
+      # uav/gzc/niosh_exploration, and true is also the default when the
+      # parameter is absent, which is what uav/gz/cave_exploration runs on.
+      allow_sudden_dir_change: true
+      occupied_voxel_gain: 0.0
+      free_voxel_gain:  0.0 # prefer directions towards more free voxels in case of the dead-end
+      unknown_voxel_gain: 60.0
+      global_graph_odom_dist: 1.0
+      select_closest_frontier: false
+    
+      traverse_length_max: 8.0 # Maximum length of the best path will be truncated to for actual traversal
+      traverse_time_max: 500.0
+      path_safety_enhance_enable: true
+      augment_free_voxels_time: 3.0
+      free_frustum_before_planning: false
+      freespace_cloud_enable: false
+      leafs_only_for_volumetric_gain: true # Whether to calculate gain of the entire path or only the leaf nodes
+      cluster_vertices_for_gain: false
+      clustering_radius: 0.5
+      path_interpolation_distance: -1.0 # 0.5
+    
+      # The ground-projection block, and the reason kGroundRobot works here.
+      # A sample's height becomes terrain + max_ground_height, so this is how
+      # far above the ground the planner places the robot's frame; robot_height
+      # is where that frame actually sits on the machine. c3lab's ANYmal values.
+      max_ground_height: 0.8 # All points will be projected to this height from ground
+      robot_height: 0.6  # Height of robot's base frame from ground
+      # A footprint corner steeper than this relative to the sample's centre
+      # refuses the sample. 20 degrees is what an ANYmal is trusted to walk up,
+      # and it is also what refuses the edge of a drop.
+      # max_inclination is set below, with the value c3lab uses.
+      # projectSample's interpolated descent, off: the ray-cast form is the one
+      # the elevation path uses and this only affects the voxblox variant.
+      interpolate_projection_distance: false
+      # Cost of a vertex the projection could not put on observed ground. They
+      # are kept - the graph would fragment without them - but paths are
+      # truncated at the first one, so this makes the planner prefer routes over
+      # terrain it has actually seen.
+      hanging_vertex_penalty: 5.0
+      # Apply the same inclination limit to global paths, not just local edges.
+      global_path_inclination_check: true
+      max_inclination: 0.3490658503988659  # was rad(20.0*pi/180)
+      
+      time_budget_limit: 5000.0 # seconds
+      auto_homing_enable: true
+      go_home_if_fully_explored: true
+    
+      nonuniform_ray_cast: false
+      ray_cast_step_size_multiplier: 1.0
+    
+      use_camera_gain: false
+      annotate_map_with_camera: true
+      
+      inspection_planning: false
+    
+      keep_leaf_yaw_only: true
+    
+      enable_opening_traversal: false
+      opening_alignment_z_offset: 0.0 # -0.25
+      only_opening_traversal: false
+    
+      auto_opening_path_approval: true
+      max_opening_height: 20.0
+    
+      box_check_method: 0
+      line_check_method: 1
+    
+      add_only_frontiers_to_global_graph: true
+    
+      min_coverage_percentage: 0.9
+      inspection_xy_spacing: 1.0 # 1.5
+      inspection_z_spacing: 0.5 # 2.0
+      inspection_thr_esdf_dist: 0.75 # 1.5
+      inspection_target_viewing_range: 1.5 #1.5 # 2.5
+      inspection_graph_vertices: 500
+      max_inspection_vertices: 100
+      #: 10
+    
+      max_surface_distance: 1.5
+      limit_vertices_to_surface: false
+      min_occ_surface: 0.0
+    
+      local_navigation_reaching_radius: 2.0
+    
+      max_exploration_iterations: 2
+      exploration_only: true
+      # compartment_centers: [2.0, 0.25, 2.0, 6.0, 0.25, 2.0, 10.0, 0.25, 2.0, 14.0, 0.25, 2.0]
+      # compartment_dimensions:
+      #   type:           kCuboid
+      #   min_val:        [-2.4, -1.9, -2.0]
+      #   max_val:        [2.4, 1.9, 2.0]
+      
+      # BWT
+      compartment_centers: [0.0, -5.0, 2.0]
+      compartment_dimensions:
+        type:           kCuboid
+        min_val:        [-7.0, -7.0, -2.5]
+        max_val:        [7.0, 7.0, 2.5]
+      # Chem plant
+      # compartment_centers: [1.0, 2.0, 2.5]
+      # compartment_dimensions:
+      #   type:           kCuboid
+      #   min_val:        [-4.0, -5.0, -3.0]
+      #   max_val:        [4.0, 5.0, 3.0]
+    
+      # compartment_centers: [0.0, 0.0, 2.25]
+      # compartment_centers: [0.0, 0.0, 1.2]
+      # compartment_dimensions:
+      #   type:           kCuboid
+      #   min_val:        [-3.0, -10.0, -1.8]
+      #   max_val:        [17.0, 10.0, 2.25]
+      # compartment_dimensions:
+      #   type:           kCuboid
+      #   min_val:        [-2.5, -2.5, -2.5]
+      #   max_val:        [2.5, 2.5, 2.5]
+      
+      # If inspection_planning is true, the following is set:
+      # use_camera_gain = true
+      # yaw_tangent_correction = false
+      # leafs_only_for_volumetric_gain = false
+      # cluster_vertices_for_gain = false
+      # path_safety_enhance_enable = false
+      # annotate_map_with_camera = true
+    
+      geofence_checking_enable: true
+    
+    AdaptiveObbParams:
+      type: kPca
+      local_pointcloud_range: 50.0
+      bounding_box_size_max: 35

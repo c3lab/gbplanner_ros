@@ -620,7 +620,13 @@ double Rrg::projectSampleEleMap(Eigen::Vector3d& sample,
 
   if (!ele_map_.exists("elevation"))
   {
-    RCLCPP_WARN(node_->get_logger(), "No 'elevation' layer in map.");
+    // Throttled: this fires once per *sample*, and with no layer present every
+    // sample reaches it. Unthrottled it wrote 2 GB of this one line in a 300 s
+    // run and buried everything else in the log.
+    RCLCPP_WARN_THROTTLE(
+        node_->get_logger(), *node_->get_clock(), 5000,
+        "No 'elevation' layer in map. RobotParams.type is kGroundRobot, so "
+        "every sample is being refused; is anything publishing elevation_map?");
     voxel_status = VoxelStatus::kFree;
     return -1.0;
   }
@@ -631,8 +637,17 @@ double Rrg::projectSampleEleMap(Eigen::Vector3d& sample,
   for(int i = 0; i < extra_samples.size(); ++i) {
     Eigen::Vector3d sample_to_check = sample + extra_samples[i];
     grid_map::Position pos(sample_to_check(0), sample_to_check(1));
+    // The three rejections below are indistinguishable from the caller - all of
+    // them just make the sample hanging - and which one it is decides where to
+    // look: the sampling space against the map's window, or the map's coverage
+    // against the sensors. Throttled hard, because this runs per sample.
     if (!ele_map_.isInside(pos))
     {
+      RCLCPP_WARN_THROTTLE(
+          node_->get_logger(), *node_->get_clock(), 5000,
+          "Ground projection: probe %d at (%.1f, %.1f) is outside the "
+          "elevation map. Its window is smaller than the sampling space.",
+          i, sample_to_check(0), sample_to_check(1));
       admissible = false;
       break;
     }
@@ -644,6 +659,10 @@ double Rrg::projectSampleEleMap(Eigen::Vector3d& sample,
     }
     if(!ele_map_.isValid(index, "elevation"))
     {
+      RCLCPP_WARN_THROTTLE(
+          node_->get_logger(), *node_->get_clock(), 5000,
+          "Ground projection: probe %d at (%.1f, %.1f) is on ground that has "
+          "never been observed.", i, sample_to_check(0), sample_to_check(1));
       admissible = false;
       break;
     }
@@ -656,8 +675,17 @@ double Rrg::projectSampleEleMap(Eigen::Vector3d& sample,
     }
     else
     {
-      if(std::atan2(std::abs(z - z_center), (sample_to_check.head(2) - sample.head(2)).norm()) > planning_params_.max_inclination)
+      const double incl = std::atan2(
+          std::abs(z - z_center),
+          (sample_to_check.head(2) - sample.head(2)).norm());
+      if(incl > planning_params_.max_inclination)
       {
+        RCLCPP_WARN_THROTTLE(
+            node_->get_logger(), *node_->get_clock(), 5000,
+            "Ground projection: probe %d is %.0f deg from the centre (limit "
+            "%.0f), centre %.2f m, corner %.2f m.",
+            i, incl * 180.0 / M_PI,
+            planning_params_.max_inclination * 180.0 / M_PI, z_center, z);
         admissible = false;
         break;
       }

@@ -1,0 +1,428 @@
+<?xml version="1.0" ?>
+<!--
+  ANYmal C for Gazebo Harmonic, as gbplanner sees it.
+
+  Rendered from this template by gz_sim.launch.py: {{robot_name}} is substituted
+  and the <!--BEGIN:lidar--> ... <!--END:lidar--> block is dropped when the lidar
+  is switched off.
+
+  What this model is, and what it is not:
+
+  * The dimensions, the sensor and the frames are ANYmal's, because those are
+    what the planner reasons about. The torso is 0.8 x 0.4 x 0.3 with its base
+    frame 0.6 m off the ground, matching RobotParams.size and
+    PlanningParams.robot_height in c3lab's anymal config, and the lidar is a
+    VLP-16 on top of it.
+
+  * The legs are NOT simulated. ANYmal walks, and a legged controller is a
+    research project of its own; nothing in this repository could drive one, and
+    none of it is what the planner is being tested on. The robot rolls on four
+    wheels tucked inside the leg visuals and is driven by DiffDrive, exactly as
+    the Husky is. So this is a model with ANYmal's footprint, height, sensor and
+    planner configuration, not a legged simulation, and a result measured here
+    says nothing about gait or about terrain a leg could step over but a wheel
+    could not.
+
+  The point of the model is the other half of the ground-robot work: with
+  gbplanner_elevation_map publishing the layer, RobotParams.type can finally be
+  kGroundRobot, so every sample is projected onto observed terrain and refused
+  where the ground has not been seen or is steeper than max_inclination. That is
+  what upstream's UGV demos could not do - with no elevation layer,
+  projectSampleEleMap rejects everything, which is why they ship kAerialRobot.
+-->
+<sdf version="1.9">
+    <model name="{{robot_name}}" canonical_link="base_link">
+
+        <link name="base_link">
+            <pose>0 0 0 0 0 0</pose>
+            <inertial>
+                <pose>0 0 0 0 0 0</pose>
+                <mass>30.0</mass>
+                <inertia>
+                    <ixx>0.95</ixx><ixy>0</ixy><ixz>0</ixz>
+                    <iyy>2.2</iyy><iyz>0</iyz>
+                    <izz>2.6</izz>
+                </inertia>
+            </inertial>
+
+            <!-- Torso. RobotParams.size is [0.8, 0.8, 0.3]: the 0.8 in y is the
+                 planner's footprint, which on a legged robot is the stance
+                 width, not the width of the body. The body itself is 0.4. -->
+            <collision name="torso_collision">
+                <pose>0 0 0 0 0 0</pose>
+                <geometry><box><size>0.8 0.4 0.3</size></box></geometry>
+                <surface>
+                    <friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction>
+                </surface>
+            </collision>
+            <visual name="torso_visual">
+                <pose>0 0 0 0 0 0</pose>
+                <geometry><box><size>0.8 0.4 0.3</size></box></geometry>
+                <material>
+                    <ambient>0.15 0.15 0.17 1</ambient>
+                    <diffuse>0.2 0.2 0.22 1</diffuse>
+                </material>
+            </visual>
+
+            <!-- Sensor head, so the VLP-16 sits where ANYmal's does. -->
+            <visual name="sensor_head_visual">
+                <pose>0.32 0 0.19 0 0 0</pose>
+                <geometry><box><size>0.12 0.14 0.08</size></box></geometry>
+                <material>
+                    <ambient>0.6 0.35 0.05 1</ambient>
+                    <diffuse>0.8 0.45 0.05 1</diffuse>
+                </material>
+            </visual>
+
+            <!-- Legs: visual only, and deliberately so. They are there to make
+                 the robot recognisable and to hide the wheels; giving them
+                 collision would let a leg catch on geometry the wheels roll
+                 over, which would be simulating a gait this model does not
+                 have. -->
+            <visual name="leg_fl_visual">
+                <pose>0.28 0.22 -0.22 0 0 0</pose>
+                <geometry><cylinder><radius>0.045</radius><length>0.45</length></cylinder></geometry>
+                <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+            </visual>
+            <visual name="leg_fr_visual">
+                <pose>0.28 -0.22 -0.22 0 0 0</pose>
+                <geometry><cylinder><radius>0.045</radius><length>0.45</length></cylinder></geometry>
+                <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+            </visual>
+            <visual name="leg_rl_visual">
+                <pose>-0.28 0.22 -0.22 0 0 0</pose>
+                <geometry><cylinder><radius>0.045</radius><length>0.45</length></cylinder></geometry>
+                <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+            </visual>
+            <visual name="leg_rr_visual">
+                <pose>-0.28 -0.22 -0.22 0 0 0</pose>
+                <geometry><cylinder><radius>0.045</radius><length>0.45</length></cylinder></geometry>
+                <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+            </visual>
+        </link>
+
+        <!--BEGIN:lidar-->
+        <!-- The lidar gets its own link because gz reports a point cloud in the
+             sensor's own frame, and voxblox needs a TF for that frame. -->
+        <link name="lidar">
+            <!-- 0.42 above base_link, so 1.02 m off the ground. Not
+                 lower: the torso top is at 0.15 and its rear edge 0.72 m
+                 back, which from 0.28 would sit 10 degrees below the
+                 horizontal - inside the VLP-16's +/- 15 degree fan, so
+                 the robot would map its own back as terrain. From 0.42
+                 that edge is 19 degrees down, outside it. -->
+            <pose>0.32 0 0.42 0 0 0</pose>
+            <inertial>
+                <mass>0.5</mass>
+                <inertia>
+                    <ixx>0.001</ixx><ixy>0</ixy><ixz>0</ixz>
+                    <iyy>0.001</iyy><iyz>0</iyz>
+                    <izz>0.001</izz>
+                </inertia>
+            </inertial>
+            <visual name="lidar_visual">
+                <geometry><cylinder><radius>0.05</radius><length>0.07</length></cylinder></geometry>
+                <material><ambient>0.05 0.05 0.05 1</ambient><diffuse>0.1 0.1 0.1 1</diffuse></material>
+            </visual>
+            <sensor name="laser" type="gpu_lidar">
+                <!-- gz appends "/points" to a gpu_lidar's topic itself, so
+                     this must NOT end in /points: the bridge and the planner
+                     both expect /{{robot_name}}/lidar/points. -->
+                <topic>{{robot_name}}/lidar</topic>
+                <gz_frame_id>{{robot_name}}/lidar</gz_frame_id>
+                <update_rate>10</update_rate>
+                <always_on>1</always_on>
+                <visualize>0</visualize>
+                <lidar>
+                    <scan>
+                        <horizontal>
+                            <samples>{{lidar_horizontal_samples}}</samples>
+                            <resolution>1</resolution>
+                            <min_angle>-3.14159</min_angle>
+                            <max_angle>3.14159</max_angle>
+                        </horizontal>
+                        <!-- VLP-16: 16 rings over +/- 15 degrees, which is what
+                             SensorParams.VLP16.fov says in the anymal config
+                             (rad(pi/6) total). Left at the real sensor's fan
+                             rather than widened: the elevation map is what
+                             covers the ground now, and widening it is what made
+                             the Husky see its own deck. -->
+                        <vertical>
+                            <samples>{{lidar_vertical_samples}}</samples>
+                            <resolution>1</resolution>
+                            <min_angle>-0.2618</min_angle>
+                            <max_angle>0.2618</max_angle>
+                        </vertical>
+                    </scan>
+                    <range>
+                        <min>0.5</min>
+                        <max>100</max>
+                        <resolution>0.01</resolution>
+                    </range>
+                    <noise>
+                        <type>gaussian</type>
+                        <mean>0.0</mean>
+                        <stddev>0.01</stddev>
+                    </noise>
+                </lidar>
+            </sensor>
+        </link>
+        <joint name="lidar_joint" type="fixed">
+            <parent>base_link</parent>
+            <child>lidar</child>
+        </joint>
+        <!--END:lidar-->
+
+        <!-- Ground sensor. Not decoration: without it this robot cannot plan
+             a single edge.
+
+             The VLP-16's fan is +/- 15 degrees and it sits 1.02 m up, so its
+             lowest ray first touches the floor 3.8 m away. Everything closer is
+             unobserved, and getProjectedEdgeStatusEleMap projects every point
+             along an edge and returns kHanging if one of them is not on
+             observed ground - so every edge out of the root vertex is refused
+             and the graph never grows. Measured: 4347 planning calls, one
+             vertex each.
+
+             The real ANYmal has the same gap and fills it the same way, with
+             depth cameras feeding elevation_mapping while the lidar feeds the
+             volumetric map. A lidar rather than a depth camera only because of
+             frames: gz publishes a depth camera's cloud in the optical
+             convention (z forward) while gz_frame_id names the link frame, so
+             the near-field ground arrived rotated a quarter turn - measured, it
+             showed up along +y with the sensor pointing +x. A gpu_lidar's cloud
+             is in the link frame, which is the convention the main lidar
+             already proved.
+
+             Its cloud goes only to gbplanner_elevation_map. voxblox and the
+             planner's gain model still see the VLP-16 alone, so c3lab's
+             SensorParams stay true to the real robot. -->
+        <link name="ground_scan">
+            <pose>0.36 0 0.10 0 0.6108652381980153 0</pose>
+            <inertial>
+                <mass>0.1</mass>
+                <inertia>
+                    <ixx>0.0001</ixx><ixy>0</ixy><ixz>0</ixz>
+                    <iyy>0.0001</iyy><iyz>0</iyz>
+                    <izz>0.0001</izz>
+                </inertia>
+            </inertial>
+            <sensor name="ground_scan" type="gpu_lidar">
+                <topic>{{robot_name}}/ground_scan</topic>
+                <gz_frame_id>{{robot_name}}/ground_scan</gz_frame_id>
+                <update_rate>10</update_rate>
+                <always_on>1</always_on>
+                <visualize>0</visualize>
+                <lidar>
+                    <scan>
+                        <horizontal>
+                            <samples>128</samples>
+                            <resolution>1</resolution>
+                            <min_angle>-1.2217304763960306</min_angle>
+                            <max_angle>1.2217304763960306</max_angle>
+                        </horizontal>
+                        <!-- Pitched 35 degrees down by the link pose, and this
+                             fan is +/- 30 around that, so the beams sweep 5 to
+                             65 degrees below horizontal: ground from 0.33 m out
+                             to 8 m, which overlaps both the self-filtered disc
+                             and the VLP-16's ring. -->
+                        <vertical>
+                            <samples>64</samples>
+                            <resolution>1</resolution>
+                            <min_angle>-0.5235987755982988</min_angle>
+                            <max_angle>0.5235987755982988</max_angle>
+                        </vertical>
+                    </scan>
+                    <range>
+                        <min>0.2</min>
+                        <max>10.0</max>
+                        <resolution>0.01</resolution>
+                    </range>
+                    <noise>
+                        <type>gaussian</type>
+                        <mean>0.0</mean>
+                        <stddev>0.005</stddev>
+                    </noise>
+                </lidar>
+            </sensor>
+        </link>
+        <joint name="ground_scan_joint" type="fixed">
+            <parent>base_link</parent>
+            <child>ground_scan</child>
+        </joint>
+
+        <link name="imu_link">
+            <pose>0 0 0 0 0 0</pose>
+            <inertial>
+                <mass>0.05</mass>
+                <inertia>
+                    <ixx>1e-05</ixx><ixy>0</ixy><ixz>0</ixz>
+                    <iyy>1e-05</iyy><iyz>0</iyz>
+                    <izz>1e-05</izz>
+                </inertia>
+            </inertial>
+            <sensor name="imu_sensor" type="imu">
+                <topic>{{robot_name}}/imu</topic>
+                <gz_frame_id>{{robot_name}}/imu_link</gz_frame_id>
+                <update_rate>200</update_rate>
+                <always_on>1</always_on>
+            </sensor>
+        </link>
+        <joint name="imu_joint" type="fixed">
+            <parent>base_link</parent>
+            <child>imu_link</child>
+        </joint>
+
+        <!-- Wheels. 0.15 m radius with their axles 0.45 m below the base frame
+             puts base_link 0.6 m up, which is PlanningParams.robot_height. They
+             sit inside the leg visuals. -->
+        <link name="front_left_wheel_link">
+            <pose>0.28 0.28 -0.45 1.5707963267948966 0 0</pose>
+            <inertial>
+                <mass>1.0</mass>
+                <inertia>
+                    <ixx>0.007</ixx><ixy>0</ixy><ixz>0</ixz>
+                    <iyy>0.007</iyy><iyz>0</iyz>
+                    <izz>0.011</izz>
+                </inertia>
+            </inertial>
+            <collision name="collision">
+                <geometry><cylinder><radius>0.15</radius><length>0.08</length></cylinder></geometry>
+                <surface>
+                    <contact><ode><kp>1e+07</kp><kd>1</kd></ode></contact>
+                    <friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction>
+                </surface>
+            </collision>
+        </link>
+        <joint name="front_left_wheel_joint" type="revolute">
+            <parent>base_link</parent>
+            <child>front_left_wheel_link</child>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <limit><lower>-1e16</lower><upper>1e16</upper></limit>
+            </axis>
+        </joint>
+
+        <link name="front_right_wheel_link">
+            <pose>0.28 -0.28 -0.45 1.5707963267948966 0 0</pose>
+            <inertial>
+                <mass>1.0</mass>
+                <inertia>
+                    <ixx>0.007</ixx><ixy>0</ixy><ixz>0</ixz>
+                    <iyy>0.007</iyy><iyz>0</iyz>
+                    <izz>0.011</izz>
+                </inertia>
+            </inertial>
+            <collision name="collision">
+                <geometry><cylinder><radius>0.15</radius><length>0.08</length></cylinder></geometry>
+                <surface>
+                    <contact><ode><kp>1e+07</kp><kd>1</kd></ode></contact>
+                    <friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction>
+                </surface>
+            </collision>
+        </link>
+        <joint name="front_right_wheel_joint" type="revolute">
+            <parent>base_link</parent>
+            <child>front_right_wheel_link</child>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <limit><lower>-1e16</lower><upper>1e16</upper></limit>
+            </axis>
+        </joint>
+
+        <link name="rear_left_wheel_link">
+            <pose>-0.28 0.28 -0.45 1.5707963267948966 0 0</pose>
+            <inertial>
+                <mass>1.0</mass>
+                <inertia>
+                    <ixx>0.007</ixx><ixy>0</ixy><ixz>0</ixz>
+                    <iyy>0.007</iyy><iyz>0</iyz>
+                    <izz>0.011</izz>
+                </inertia>
+            </inertial>
+            <collision name="collision">
+                <geometry><cylinder><radius>0.15</radius><length>0.08</length></cylinder></geometry>
+                <surface>
+                    <contact><ode><kp>1e+07</kp><kd>1</kd></ode></contact>
+                    <friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction>
+                </surface>
+            </collision>
+        </link>
+        <joint name="rear_left_wheel_joint" type="revolute">
+            <parent>base_link</parent>
+            <child>rear_left_wheel_link</child>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <limit><lower>-1e16</lower><upper>1e16</upper></limit>
+            </axis>
+        </joint>
+
+        <link name="rear_right_wheel_link">
+            <pose>-0.28 -0.28 -0.45 1.5707963267948966 0 0</pose>
+            <inertial>
+                <mass>1.0</mass>
+                <inertia>
+                    <ixx>0.007</ixx><ixy>0</ixy><ixz>0</ixz>
+                    <iyy>0.007</iyy><iyz>0</iyz>
+                    <izz>0.011</izz>
+                </inertia>
+            </inertial>
+            <collision name="collision">
+                <geometry><cylinder><radius>0.15</radius><length>0.08</length></cylinder></geometry>
+                <surface>
+                    <contact><ode><kp>1e+07</kp><kd>1</kd></ode></contact>
+                    <friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction>
+                </surface>
+            </collision>
+        </link>
+        <joint name="rear_right_wheel_joint" type="revolute">
+            <parent>base_link</parent>
+            <child>rear_right_wheel_link</child>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <limit><lower>-1e16</lower><upper>1e16</upper></limit>
+            </axis>
+        </joint>
+
+        <plugin filename="gz-sim-diff-drive-system"
+            name="gz::sim::systems::DiffDrive">
+            <left_joint>rear_left_wheel_joint</left_joint>
+            <left_joint>front_left_wheel_joint</left_joint>
+            <right_joint>rear_right_wheel_joint</right_joint>
+            <right_joint>front_right_wheel_joint</right_joint>
+            <wheel_separation>0.56</wheel_separation>
+            <wheel_radius>0.15</wheel_radius>
+            <topic>{{robot_name}}/command/velocity</topic>
+            <!-- PlanningParams v_max 0.5 and yaw_rate_max 0.3 in the anymal
+                 config: the vehicle is capped a little above them so the
+                 follower's limits are what bind, not the actuator's. -->
+            <max_linear_velocity>1.0</max_linear_velocity>
+            <max_angular_velocity>0.8</max_angular_velocity>
+            <max_linear_acceleration>1.5</max_linear_acceleration>
+            <max_angular_acceleration>1.5</max_angular_acceleration>
+        </plugin>
+
+        <plugin filename="gz-sim-odometry-publisher-system"
+            name="gz::sim::systems::OdometryPublisher">
+            <odom_frame>world</odom_frame>
+            <robot_base_frame>{{robot_name}}/base_link</robot_base_frame>
+            <odom_publish_frequency>50</odom_publish_frequency>
+            <odom_topic>{{robot_name}}/odometry</odom_topic>
+            <odom_covariance_topic>{{robot_name}}/odometry_with_covariance</odom_covariance_topic>
+            <dimensions>3</dimensions>
+        </plugin>
+
+        <plugin filename="gz-sim-pose-publisher-system"
+            name="gz::sim::systems::PosePublisher">
+            <publish_link_pose>true</publish_link_pose>
+            <publish_visual_pose>false</publish_visual_pose>
+            <publish_collision_pose>false</publish_collision_pose>
+            <publish_sensor_pose>false</publish_sensor_pose>
+            <publish_model_pose>true</publish_model_pose>
+            <publish_nested_model_pose>false</publish_nested_model_pose>
+            <use_pose_vector_msg>true</use_pose_vector_msg>
+            <static_publisher>false</static_publisher>
+            <update_frequency>50</update_frequency>
+        </plugin>
+    </model>
+</sdf>

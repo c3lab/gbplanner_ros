@@ -1,0 +1,60 @@
+# The elevation layer gbplanner's ground-robot mode projects onto. See the
+# package description for why this node exists at all.
+/**:
+  ros__parameters:
+    world_frame: world
+
+    # Cell size. Rrg::projectSampleEleMap probes the centre of the robot and the
+    # four corners of its footprint, so cells much larger than the footprint
+    # would put every probe in the same cell and the inclination check would
+    # always pass. The ANYmal's footprint is 0.8 m, so 0.2 m puts the corners
+    # two cells out from the centre.
+    resolution: 0.2
+
+    # Side of the published window, centred on the robot. It has to cover
+    # BoundedSpaceParams/Local, which the ANYmal config sets to +/- 20 m: a
+    # sample outside the map is refused by isInside() before its height is ever
+    # read, so a window smaller than the sampling space would silently reject
+    # the outer samples.
+    map_length: 44.0
+
+    # Points above robot_z + this are ceiling, wall tops and overhangs, not
+    # terrain. Anchored to the robot because the terrain height is the thing
+    # being measured and cannot be assumed.
+    ceiling_margin: 1.0
+
+    # Beam length limits, applied in the sensor frame, to both clouds. The lower
+    # one drops a robot seeing its own body, which would otherwise raise the
+    # cells it stands in and make everything around it look like a step. 0.4 and
+    # not higher because the ground camera's whole job is the near field: its
+    # closest useful returns are about half a metre out. The ANYmal's lidar
+    # needs no more than this - its lowest ray clears the torso by 4 degrees.
+    min_range: 0.4
+    max_range: 20.0
+
+    # A cell needs this many returns before it is published. One stray return
+    # through a gap in the mesh would otherwise become terrain, and terrain is
+    # what the planner trusts.
+    min_hits: 2
+
+    publish_rate: 4.0
+
+    # A robot standing up is evidence of ground under its feet, and no sensor
+    # sees there. elevation_mapping uses the same reasoning on the real robot.
+    # Without this the cell the robot occupies is NaN, so projectSampleEleMap
+    # refuses the robot's own position and the graph never leaves the root.
+    seed_footprint: true
+
+    # Radius of the seeded disc, and how far below the odometry frame the ground
+    # is. Both describe the machine: the ANYmal's stance is 0.8 m across and its
+    # base frame sits 0.6 m up (PlanningParams.robot_height).
+    seed_radius: 0.85
+    robot_height: 0.6
+
+    # Points closer than this to the robot in the ground plane are the robot.
+    # Both sensors raycast the render scene, so the leg visuals and the wheels
+    # come back as returns; with "highest point in the cell" as the rule, they
+    # become terrain right where the robot stands. Slightly smaller than
+    # seed_radius so the filtered disc is covered by the seeded one and no ring
+    # of unobserved cells is left between them.
+    self_filter_radius: 0.75

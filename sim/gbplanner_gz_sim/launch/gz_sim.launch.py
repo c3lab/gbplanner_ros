@@ -127,6 +127,7 @@ _ROBOTS = {
         "follower": "uav_path_follower_node",
         "follower_config": "uav_path_follower.yaml",
         "enable_topic": True,
+        "elevation_map": False,
         # The actuated camera the inspection scenarios pitch. std_msgs/Float64
         # is what pci_general publishes and gz.msgs.Double what
         # JointPositionController expects; the state comes back as a
@@ -145,10 +146,26 @@ _ROBOTS = {
             "@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked",
         ],
     },
+    # ANYmal. Same differential drive underneath as the husky -- the legs are
+    # visual only, see the model's header -- but it is the robot the planner is
+    # configured for as a *ground* robot, so it brings the elevation map with
+    # it. Without that layer RobotParams.type kGroundRobot rejects every sample.
+    "anymal": {
+        "follower": "ugv_path_follower_node",
+        "follower_config": "anymal_path_follower.yaml",
+        "enable_topic": False,
+        "elevation_map": True,
+        # Close-range ground sensing for the elevation map, and nothing else:
+        # the model's header explains why the robot cannot plan without it.
+        "ground_cam": True,
+        "cam_pitch_bridge": [],
+        "camera_bridge": [],
+    },
     "marble_husky": {
         "follower": "ugv_path_follower_node",
         "follower_config": "ugv_path_follower.yaml",
         "enable_topic": False,
+        "elevation_map": False,
         "cam_pitch_bridge": [],
         # One rgbd_camera sensor, which fans out into four gz topics under the
         # sensor's own <topic> prefix.
@@ -342,6 +359,10 @@ def _setup(context, *args, **kwargs):
         bridge_args += [arg.format(r=robot) for arg in spec["camera_bridge"]]
     if cam_pitch:
         bridge_args += [arg.format(r=robot) for arg in spec["cam_pitch_bridge"]]
+    if spec.get("ground_cam"):
+        bridge_args.append(
+            f"/{robot}/ground_scan/points"
+            f"@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked")
 
     bridge = Node(
         package="ros_gz_bridge",
@@ -382,6 +403,29 @@ def _setup(context, *args, **kwargs):
         remappings=controller_remaps,
     )
 
+    # The elevation layer gbplanner's ground-robot mode projects onto. Not
+    # namespaced under the robot: rrg.cpp subscribes to a relative
+    # "elevation_map", which for these single-robot scenarios resolves at the
+    # root, and the planner is what has to receive it.
+    elevation_map = Node(
+        package="gbplanner_elevation_map",
+        executable="elevation_map_node",
+        name="elevation_map_node",
+        output="screen",
+        condition=IfCondition("true" if spec.get("elevation_map") else "false"),
+        parameters=[
+            os.path.join(
+                get_package_share_directory("gbplanner_elevation_map"),
+                "config", "elevation_map.yaml"),
+            {"use_sim_time": use_sim_time},
+        ],
+        remappings=[
+            ("pointcloud", f"/{robot}/lidar/points"),
+            ("pointcloud_ground", f"/{robot}/ground_scan/points"),
+            ("odometry", f"/{robot}/odometry"),
+        ],
+    )
+
     # gz's PosePublisher roots the tree at the *world's name* -- "cave_box",
     # "cosmos" -- while the planner's voxblox config, the OdometryPublisher and
     # every marker header say "world". Without this identity link the tree is
@@ -417,6 +461,7 @@ def _setup(context, *args, **kwargs):
         spawn,
         frame_link,
         controller,
+        elevation_map,
         rviz,
     ]
 
