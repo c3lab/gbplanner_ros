@@ -103,6 +103,7 @@ from launch.actions import (
     IncludeLaunchDescription,
     OpaqueFunction,
     SetEnvironmentVariable,
+    TimerAction,
 )
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -205,6 +206,9 @@ _ARGS = [
     ("world_frame", "world", "TF root the planner works in; tied to the gz world frame."),
     ("lidar_horizontal_samples", "2048", "gpu_lidar horizontal beams."),
     ("lidar_vertical_samples", "128", "gpu_lidar vertical beams."),
+    ("elevation_map_delay", "2.0",
+     "Seconds to wait before starting elevation_mapping, so its TF listener "
+     "has a tree to look the robot up in."),
     ("spawn_timeout", "180", "Seconds to wait for the gz create service before spawning."),
     ("gz_verbosity", "1", "gz sim -v level."),
     # -s starts the server without a GUI, which is not the same thing as being
@@ -412,7 +416,18 @@ def _setup(context, *args, **kwargs):
     # subscribes to a relative "elevation_map", which for these single-robot
     # scenarios resolves at the root, while the node publishes its map on a
     # name relative to itself.
-    elevation_map = Node(
+    # Started a little late, only so its TF listener has a tree to look the
+    # robot up in: the one-shot PlanarFloorInitializer gives up permanently if
+    # that lookup throws, and it did when the node came up with the launch.
+    #
+    # The delay is NOT how the seed is made correct. That initializer samples
+    # base_link's height exactly once, so a robot still dropping onto its
+    # wheels seeds a plane as far above the floor as it had left to fall -
+    # measured, 0.30 m, read back as a 23 degree step against every observed
+    # neighbour and refused, max_inclination being 20 degrees. Waiting out the
+    # drop is a race against it; the scenarios spawn the robot at the height
+    # its wheels rest at instead, so there is no drop to wait for.
+    elevation_map_node = Node(
         package="elevation_mapping",
         executable="elevation_mapping",
         name="elevation_mapping",
@@ -423,6 +438,10 @@ def _setup(context, *args, **kwargs):
             {"use_sim_time": use_sim_time},
         ],
         remappings=[("elevation_map", "/elevation_map")],
+    )
+    elevation_map = TimerAction(
+        period=float(cfg("elevation_map_delay")),
+        actions=[elevation_map_node],
     )
 
     # gz's PosePublisher roots the tree at the *world's name* -- "cave_box",

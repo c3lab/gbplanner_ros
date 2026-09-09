@@ -63,6 +63,11 @@ services:
       dockerfile: docker/Dockerfile.base
       args:
         ROS_DISTRO: ${ROS_DISTRO}
+      # The Tier A sources are private forks, so the build needs the agent.
+      # BuildKit forwards it as a socket for the length of one RUN and never
+      # puts a key in a layer; the Dockerfile mounts it on the vcs import step.
+      ssh:
+        - default
     network_mode: host
     ipc: host
     privileged: true

@@ -128,7 +128,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # bootstrap/) so a .srv edit does not force a rebuild.
 # ---------------------------------------------------------------------------
 COPY vcstool/image_deps.repos /tmp/image_deps.repos
-RUN mkdir -p /opt/deps_ws/src \
+# --mount=type=ssh: the sources are private, and this is how they are cloned
+# without a key ever reaching a layer - BuildKit exposes the host's agent as a
+# socket for the duration of this RUN only. `docker compose build` forwards it
+# because the base service declares `ssh: [default]`.
+RUN --mount=type=ssh mkdir -p /opt/deps_ws/src \
+    && mkdir -p -m 0700 ~/.ssh && ssh-keyscan -t rsa,ecdsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null \
     && vcs import /opt/deps_ws/src < /tmp/image_deps.repos \
     # mav_comm's ros2 branch ships five packages and only some were actually
     # ported: mav_state_machine_msgs and mav_system_msgs call

@@ -3,7 +3,10 @@
 # Changing a pin here means an image rebuild, which is the point: nothing in this
 # file depends on gbplanner's own packages, so it does not churn.
 #
-# https:// (not git@) on purpose: the image build has no ssh-agent.
+# git@ for the private forks: the base service declares `ssh: [default]` and the
+# Dockerfile mounts the agent on the import step, so the build clones them the
+# same way a developer would. Public upstreams stay on https, which needs
+# nothing.
 repositories:
   voxblox:
     type: git
@@ -34,7 +37,7 @@ repositories:
     version: 32800890d546e306f73c3ee3091fb6903452f925
   kindr_ros:
     type: git
-    url: https://github.com/GabrieleSantangelo/kindr_ros2.git
+    url: git@github.com:GabrieleSantangelo/kindr_ros2.git
     # A real port. ANYbotics/kindr_ros has a branch called "ros2" on which all
     # four packages are still catkin and none build under ament; this is the
     # one package elevation_mapping needs, ported, with upstream's own tests
@@ -43,7 +46,7 @@ repositories:
     version: c3c6cddc7a714b4772027847da98d17a92c309cf
   elevation_mapping:
     type: git
-    url: https://github.com/GabrieleSantangelo/elevation_mapping_ros2.git
+    url: git@github.com:GabrieleSantangelo/elevation_mapping_ros2.git
     # This is what publishes the grid_map "elevation" layer, and it is the
     # reason RobotParams.type can be kGroundRobot at all. Rrg::projectSampleEleMap
     # reads that layer at the robot's centre and at the four corners of its

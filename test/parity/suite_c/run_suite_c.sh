@@ -71,6 +71,13 @@ done
 LAUNCH_FILE="$(scenario_launch "$SCENARIO")" || { echo "unknown scenario: $SCENARIO" >&2; exit 2; }
 ODOM_TOPIC="$(scenario_odom "$SCENARIO")"
 [ -n "$WORLD" ] && EXTRA_ARGS="$EXTRA_ARGS world:=$WORLD"
+# Spawn height goes with the world, not with the scenario: a robot spawned
+# above the height it rests at falls, and for the anymal that corrupts the
+# seed elevation_mapping puts under its feet. cave_box's floor is at zero,
+# every other world's is not.
+if [ "$SCENARIO" = "anymal_niosh" ] && [ "$WORLD" = "cave_box" ]; then
+  EXTRA_ARGS="$EXTRA_ARGS z:=0.62"
+fi
 
 # Every world except cave_box pulls its meshes from subt_cave_sim, which is
 # 3.9 GB and deliberately not vendored here.

@@ -23,8 +23,8 @@ bounding space opened up to these worlds; it was never tuned for this mine.
 
 The tunnel mesh lives in the subt_cave_sim checkout, deliberately not vendored;
 `make run-sim anymal_niosh` mounts it. Without those assets, pass
-`world:=cave_box` for the primitives-only world that ships with
-gbplanner_gz_sim.
+`world:=cave_box z:=0.62` for the primitives-only world that ships with
+gbplanner_gz_sim - the z matters, see the spawn arguments below.
 """
 
 from launch import LaunchDescription
@@ -91,11 +91,17 @@ def generate_launch_description() -> LaunchDescription:
                 description="World in gbplanner_gz_sim/worlds. Use cave_box when "
                             "the subt_cave_sim assets are not available."),
             DeclareLaunchArgument("robot_name", default_value="anymal"),
-            # base_link sits 0.6 m up, so spawning at 0.9 drops it a little onto
-            # its wheels rather than through the floor.
+            # The height base_link rests at, not a height to fall from.
+            # elevation_mapping's floor-plane initializer samples base_link once
+            # and seeds the patch under the robot from it; spawn the robot above
+            # its resting height and that patch is seeded as high as the robot
+            # still had to fall, which then reads as a step the planner refuses.
+            # niosh_osrf's floor is 0.335 m up and base_link is 0.6 above the
+            # ground, so 0.95 leaves 1.5 cm of settle. On cave_box, whose floor
+            # is at zero, pass z:=0.62 with world:=cave_box.
             DeclareLaunchArgument("x", default_value="0.0"),
             DeclareLaunchArgument("y", default_value="0.0"),
-            DeclareLaunchArgument("z", default_value="0.9"),
+            DeclareLaunchArgument("z", default_value="0.95"),
             DeclareLaunchArgument(
                 "headless", default_value="false",
                 description="Run gz without its GUI. RViz is separate and "
