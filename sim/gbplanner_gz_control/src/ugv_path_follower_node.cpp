@@ -48,6 +48,7 @@ UGVPathFollowerNode::UGVPathFollowerNode(const rclcpp::NodeOptions & options)
     declare_parameter<double>("heading_align_threshold", 0.7);
   goal_yaw_enable_ = declare_parameter<bool>("goal_yaw_enable", true);
   odometry_timeout_ = declare_parameter<double>("odometry_timeout", 1.0);
+  lookahead_distance_ = declare_parameter<double>("lookahead_distance", 1.2);
   stuck_timeout_ = declare_parameter<double>("stuck_timeout", 6.0);
   stuck_progress_ = declare_parameter<double>("stuck_progress", 0.15);
   recovery_duration_ = declare_parameter<double>("recovery_duration", 2.0);
@@ -182,6 +183,20 @@ bool UGVPathFollowerNode::handleStuck(const rclcpp::Time & stamp, double command
   return true;
 }
 
+size_t UGVPathFollowerNode::lookaheadIndex() const
+{
+  for (size_t i = current_pose_index_; i < poses_.size(); ++i) {
+    const double dx = poses_[i].position.x - current_pose_.position.x;
+    const double dy = poses_[i].position.y - current_pose_.position.y;
+    if (std::hypot(dx, dy) >= lookahead_distance_) {
+      return i;
+    }
+  }
+  // Nothing that far ahead left: the end of the path is closer than the
+  // lookahead, so steer at the end and let the goal-yaw branch finish it.
+  return poses_.size() - 1;
+}
+
 void UGVPathFollowerNode::controlStep()
 {
   geometry_msgs::msg::Twist cmd;
@@ -235,7 +250,7 @@ void UGVPathFollowerNode::controlStep()
   {
     ++current_pose_index_;
   }
-  const geometry_msgs::msg::Pose & target = poses_[current_pose_index_];
+  const geometry_msgs::msg::Pose & target = poses_[lookaheadIndex()];
 
   const double current_yaw = tf2::getYaw(current_pose_.orientation);
   const double dx = target.position.x - current_pose_.position.x;

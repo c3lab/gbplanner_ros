@@ -83,3 +83,13 @@
     # the tunnel falls and keeps falling - measured on a live run, z = -850 km,
     # still accelerating, with nothing in the stack noticing.
     world_z_limit: 50.0
+
+    # Steer at the first path point this far ahead, rather than at the nearest
+    # unreached waypoint. Just outside trans_tolerance the bearing to a waypoint
+    # swings wildly with the robot's own position, so the heading error flips
+    # sign as the robot rotates: it turns one way, crosses the bearing, turns
+    # back, and never gets under heading_align_threshold to earn any forward
+    # speed. Measured on a live session, that is what the robot was doing when
+    # spin_timeout fired. A point a little over a metre out has a stable
+    # bearing, which is why pure pursuit uses one.
+    lookahead_distance: 1.2

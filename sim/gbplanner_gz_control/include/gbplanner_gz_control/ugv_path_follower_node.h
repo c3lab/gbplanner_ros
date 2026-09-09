@@ -48,6 +48,18 @@ private:
 
   bool isAtPosition(const geometry_msgs::msg::Pose & target) const;
 
+  /// The point on the path to steer at: the first one at least
+  /// lookahead_distance away, searching forward from current_pose_index_.
+  ///
+  /// Chasing the nearest unreached waypoint instead is what made the robot
+  /// turn on the spot and never stop. Just outside trans_tolerance the bearing
+  /// to a waypoint is extremely sensitive to the robot's own position, so the
+  /// heading error flips sign as the robot rotates: it turns one way, crosses
+  /// the bearing, turns back, and never gets below heading_align_threshold to
+  /// earn any forward speed. A lookahead point far enough ahead has a stable
+  /// bearing, which is the whole reason pure pursuit uses one.
+  size_t lookaheadIndex() const;
+
   /// Detect a robot that is being commanded but is not moving, and back out of
   /// it. A differential drive wedged against a step reports the same odometry
   /// forever while this node goes on asking for half a metre per second, and
@@ -85,6 +97,7 @@ private:
   double heading_align_threshold_{0.0};
   bool goal_yaw_enable_{false};
   double odometry_timeout_{0.0};
+  double lookahead_distance_{0.0};
 
   // Stuck detection and recovery.
   double stuck_timeout_{0.0};
