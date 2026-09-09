@@ -92,6 +92,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-grid-map-cv \
     && rm -rf /var/lib/apt/lists/*
 
+# ros2_control, and gz_ros2_control with it. Needed by quadruped_ros2_control:
+# the quadruped's joints are driven through a controller_manager, its gz side is
+# a gz_ros2_control plugin, and the walking controller is a
+# controller_interface plugin. ros2controlcli comes too, because "which
+# controllers are loaded" is the first question when a legged robot lies down
+# instead of standing up.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-ros2-control \
+    ros-${ROS_DISTRO}-ros2-controllers \
+    ros-${ROS_DISTRO}-ros2controlcli \
+    ros-${ROS_DISTRO}-gz-ros2-control \
+    ros-${ROS_DISTRO}-angles \
+    ros-${ROS_DISTRO}-xacro \
+    && rm -rf /var/lib/apt/lists/*
+
 # BehaviorTree.CPP: the ROS 1 side vendored 4.7.0 from source; Jazzy ships 4.9.0
 # binaries. Same v4 API family, stricter XML validation - see docs/BT_NOTES.md.
 RUN apt-get update && apt-get install -y --no-install-recommends \
