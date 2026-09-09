@@ -24,11 +24,12 @@
     could not.
 
   The point of the model is the other half of the ground-robot work: with
-  gbplanner_elevation_map publishing the layer, RobotParams.type can finally be
-  kGroundRobot, so every sample is projected onto observed terrain and refused
-  where the ground has not been seen or is steeper than max_inclination. That is
-  what upstream's UGV demos could not do - with no elevation layer,
-  projectSampleEleMap rejects everything, which is why they ship kAerialRobot.
+  ANYbotics' elevation_mapping publishing the layer, RobotParams.type can
+  finally be kGroundRobot, so every sample is projected onto observed terrain
+  and refused where the ground has not been seen or is steeper than
+  max_inclination. That is what upstream's UGV demos could not do - with no
+  elevation layer, projectSampleEleMap rejects everything, which is why they
+  ship kAerialRobot.
 -->
 <sdf version="1.9">
     <model name="{{robot_name}}" canonical_link="base_link">
@@ -194,9 +195,9 @@
              is in the link frame, which is the convention the main lidar
              already proved.
 
-             Its cloud goes only to gbplanner_elevation_map. voxblox and the
-             planner's gain model still see the VLP-16 alone, so c3lab's
-             SensorParams stay true to the real robot. -->
+             Its cloud goes to elevation_mapping alongside the VLP-16's.
+             voxblox and the planner's gain model still see the VLP-16 alone,
+             so c3lab's SensorParams stay true to the real robot. -->
         <link name="ground_scan">
             <pose>0.36 0 0.10 0 0.6108652381980153 0</pose>
             <inertial>
@@ -234,7 +235,15 @@
                         </vertical>
                     </scan>
                     <range>
-                        <min>0.2</min>
+                        <!-- 0.65 and not less: this sensor's own beams reach
+                             the robot's front legs at 0.59 m and its front
+                             wheels at 0.62 m, and both are rendered, so a
+                             shorter minimum makes the robot map its own limbs
+                             as terrain standing where it is about to walk. At
+                             65 degrees down, 0.65 m of beam is 0.27 m of ground
+                             from the sensor, which is still well inside the
+                             VLP-16's 3.8 m blind disc. -->
+                        <min>0.65</min>
                         <max>10.0</max>
                         <resolution>0.01</resolution>
                     </range>

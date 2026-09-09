@@ -17,7 +17,6 @@ x-common-volumes: &common_volumes
   - ${ROOT_DIR}/gbplanner_ui:/workspace/gbplanner3_ws/src/exploration/gbplanner_ui
   - ${ROOT_DIR}/sim/gbplanner_gz_sim:/workspace/gbplanner3_ws/src/sim/gbplanner_gz_sim
   - ${ROOT_DIR}/sim/gbplanner_gz_control:/workspace/gbplanner3_ws/src/sim/gbplanner_gz_control
-  - ${ROOT_DIR}/sim/gbplanner_elevation_map:/workspace/gbplanner3_ws/src/sim/gbplanner_elevation_map
   - ${ROOT_DIR}/tools:/workspace/tools
   - ${ROOT_DIR}/test:/workspace/test
 

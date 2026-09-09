@@ -10,7 +10,7 @@
 # Rrg::projectSampleEleMap, which needs a grid_map "elevation" layer on the
 # elevation_map topic - and nothing in gbplanner_ros publishes one. On a real
 # ANYmal it comes from ANYbotics' elevation_mapping. Here it comes from
-# gbplanner_elevation_map, which builds it from the robot's own point cloud.
+# ANYbotics' elevation_mapping, which this repository pins as a Tier A source.
 # Without that node this config plans nothing at all: with no layer,
 # projectSampleEleMap refuses every sample and the graph never leaves the root.
 #
@@ -94,7 +94,7 @@
       Local:
         # c3lab's +/- 20. The elevation map's window has to cover this, or the
         # outer samples are refused by isInside() before their height is ever
-        # read; gbplanner_elevation_map's map_length is 44 m for that reason.
+        # read; elevation_mapping's length_in_x/y is 44 m for that reason.
         type:           kCuboid
         min_val:        [-20.0, -20.0, -2.0]
         max_val:        [20.0, 20.0, 2.0]

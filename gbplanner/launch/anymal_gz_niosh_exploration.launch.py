@@ -7,8 +7,8 @@ This is the only scenario in the repository where `RobotParams.type` is
 ground robots as aerial ones, because `kGroundRobot` routes every sample and
 every edge through `Rrg::projectSampleEleMap`, which needs a `grid_map`
 "elevation" layer that nothing in gbplanner_ros publishes. Here
-`gbplanner_elevation_map` builds that layer from the robot's own point cloud,
-which is what makes the mode usable.
+ANYbotics' `elevation_mapping` builds that layer from the robot's own point
+clouds, which is what makes the mode usable.
 
 What it buys: a sample's height is snapped to the observed terrain rather than
 kept at the robot's current altitude, and it is refused outright if a footprint

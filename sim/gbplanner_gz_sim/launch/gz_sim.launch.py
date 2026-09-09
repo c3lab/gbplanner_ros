@@ -403,27 +403,26 @@ def _setup(context, *args, **kwargs):
         remappings=controller_remaps,
     )
 
-    # The elevation layer gbplanner's ground-robot mode projects onto. Not
-    # namespaced under the robot: rrg.cpp subscribes to a relative
-    # "elevation_map", which for these single-robot scenarios resolves at the
-    # root, and the planner is what has to receive it.
+    # The elevation layer gbplanner's ground-robot mode projects onto, from
+    # ANYbotics' elevation_mapping rather than from anything written here. It
+    # is the reason RobotParams.type can be kGroundRobot: with no layer,
+    # Rrg::projectSampleEleMap refuses every sample.
+    #
+    # Not namespaced under the robot, and remapped to the root: rrg.cpp
+    # subscribes to a relative "elevation_map", which for these single-robot
+    # scenarios resolves at the root, while the node publishes its map on a
+    # name relative to itself.
     elevation_map = Node(
-        package="gbplanner_elevation_map",
-        executable="elevation_map_node",
-        name="elevation_map_node",
+        package="elevation_mapping",
+        executable="elevation_mapping",
+        name="elevation_mapping",
         output="screen",
         condition=IfCondition("true" if spec.get("elevation_map") else "false"),
         parameters=[
-            os.path.join(
-                get_package_share_directory("gbplanner_elevation_map"),
-                "config", "elevation_map.yaml"),
+            os.path.join(share, "config", f"{model}_elevation_mapping.yaml"),
             {"use_sim_time": use_sim_time},
         ],
-        remappings=[
-            ("pointcloud", f"/{robot}/lidar/points"),
-            ("pointcloud_ground", f"/{robot}/ground_scan/points"),
-            ("odometry", f"/{robot}/odometry"),
-        ],
+        remappings=[("elevation_map", "/elevation_map")],
     )
 
     # gz's PosePublisher roots the tree at the *world's name* -- "cave_box",

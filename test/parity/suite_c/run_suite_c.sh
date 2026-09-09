@@ -121,7 +121,7 @@ POSE_PID=$!
 # the timeout.
 CMD="${ODOM%/odometry}/command/velocity"
 ( for i in $(seq 1 400); do
-    timeout 3 ros2 topic echo --once --field linear "$CMD" 2>/dev/null \
+    timeout 3 ros2 topic echo --once "$CMD" 2>/dev/null \
       | tr '\n' ' ' | sed 's/$/\n/'
     sleep 2
   done ) > /out/cmd_vel.txt 2>&1 &

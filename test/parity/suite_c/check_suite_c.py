@@ -237,15 +237,29 @@ def main():
     # one still commanding a robot that does not move is geometry or physics.
     cmd = read(args.out / "cmd_vel.txt")
     if cmd:
-        samples = cmd.splitlines()
-        commanding = [ln for ln in samples
-                      if re.search(r"x:\s*(-?[0-9.eE+-]+)", ln)
-                      and abs(float(re.search(r"x:\s*(-?[0-9.eE+-]+)", ln).group(1))) > 1e-3]
-        result.note(f"follower published a non-zero forward velocity in "
-                    f"{len(commanding)}/{len(samples)} samples"
-                    + ("" if commanding else
-                       " - it stopped commanding, so look at the follower and "
-                       "the control interface, not at the simulation"))
+        # The whole twist, because "not moving" splits three ways and only the
+        # command tells them apart: driving and blocked, turning and never
+        # converging on a heading, or not being commanded at all.
+        samples = [ln for ln in cmd.splitlines() if "linear" in ln]
+        # Anchored to "linear:" and "angular:" rather than to the axis name:
+        # a Twist has an x, y and z under each, so a bare "z:" matches
+        # linear.z first and reports every turn as a stop.
+        def field(line, block, axis):
+            m = re.search(
+                block + r":.*?" + axis + r":\s*(-?[0-9.eE+-]+)", line)
+            return abs(float(m.group(1))) if m else 0.0
+        driving = [ln for ln in samples if field(ln, "linear", "x") > 1e-3]
+        turning = [ln for ln in samples if field(ln, "angular", "z") > 1e-3]
+        idle = [ln for ln in samples
+                if field(ln, "linear", "x") <= 1e-3
+                and field(ln, "angular", "z") <= 1e-3]
+        idle = len(idle)
+        result.note(
+            f"follower commanded: {len(driving)}/{len(samples)} samples driving, "
+            f"{len(turning)} turning, {idle} neither"
+            + ("" if driving or turning else
+               " - it stopped commanding, so look at the follower and the "
+               "control interface, not at the simulation"))
 
     # 5. The regression fix, observed rather than argued: the three-second wait
     #    in runGlobalPlanner exists so a fresher pose arrives. Under the single
