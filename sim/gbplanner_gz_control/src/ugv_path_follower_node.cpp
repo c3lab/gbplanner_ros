@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 #include <tf2/utils.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -83,6 +84,7 @@ void UGVPathFollowerNode::pathCallback(const nav_msgs::msg::Path & path)
   have_stuck_reference_ = false;
   in_recovery_ = false;
   recovery_attempts_ = 0;
+  turn_direction_ = 1.0;
   // Debug, not info: with pub_singple_wp the control interface republishes a
   // one-pose carrot path every 50 ms.
   RCLCPP_DEBUG(get_logger(), "New path with %zu poses.", poses_.size());
@@ -181,6 +183,25 @@ bool UGVPathFollowerNode::handleStuck(const rclcpp::Time & stamp, double command
   return true;
 }
 
+void UGVPathFollowerNode::advanceToNearest()
+{
+  // Nearest point on the path from here forward, and never a step back: a
+  // waypoint the robot has already passed is done with, whether or not it ever
+  // came within trans_tolerance of it.
+  size_t best = current_pose_index_;
+  double best_distance = std::numeric_limits<double>::max();
+  for (size_t i = current_pose_index_; i < poses_.size(); ++i) {
+    const double dx = poses_[i].position.x - current_pose_.position.x;
+    const double dy = poses_[i].position.y - current_pose_.position.y;
+    const double distance = std::hypot(dx, dy);
+    if (distance < best_distance) {
+      best_distance = distance;
+      best = i;
+    }
+  }
+  current_pose_index_ = best;
+}
+
 size_t UGVPathFollowerNode::lookaheadIndex() const
 {
   for (size_t i = current_pose_index_; i < poses_.size(); ++i) {
@@ -243,11 +264,7 @@ void UGVPathFollowerNode::controlStep()
     return;
   }
 
-  while (current_pose_index_ + 1 < poses_.size() &&
-    isAtPosition(poses_[current_pose_index_]))
-  {
-    ++current_pose_index_;
-  }
+  advanceToNearest();
   const geometry_msgs::msg::Pose & target = poses_[lookaheadIndex()];
 
   const double current_yaw = tf2::getYaw(current_pose_.orientation);
@@ -267,7 +284,17 @@ void UGVPathFollowerNode::controlStep()
       }
     }
   } else {
-    const double heading_error = wrapPi(std::atan2(dy, dx) - current_yaw);
+    double heading_error = wrapPi(std::atan2(dy, dx) - current_yaw);
+    // Away from the tie, remember which way round the robot is turning; at the
+    // tie, use it. kAmbiguous is generous on purpose - a couple of degrees
+    // either side of straight behind is already enough for noise to flip the
+    // sign from one cycle to the next.
+    constexpr double kAmbiguous = M_PI - 0.15;
+    if (std::abs(heading_error) < kAmbiguous) {
+      turn_direction_ = (heading_error >= 0.0) ? 1.0 : -1.0;
+    } else {
+      heading_error = turn_direction_ * std::abs(heading_error);
+    }
     cmd.angular.z = clampAbs(kp_yaw_ * heading_error, yaw_rate_max_);
     if (std::abs(heading_error) < heading_align_threshold_) {
       // cos() rather than a hard gate: the speed then falls off continuously as

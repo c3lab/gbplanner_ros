@@ -45,7 +45,21 @@
     path_end_yaw_thr: 0.5
     path_progression_dist_thr: 1.0
     path_progression_dist_thr_min: 0.8
-    path_progression_yaw_thr: 0.7
+    # 3.4 rather than c3lab's 0.7, and this one is about the tracker, not the
+    # robot. pci_general only advances its waypoint index when the robot is
+    # both near a waypoint and within this of that waypoint's heading. c3lab
+    # run a tracker that follows the commanded heading along the path; the
+    # tracker here follows positions and only aligns to a heading at the end of
+    # a path, so at 0.7 the index stops advancing part-way, the interface waits
+    # out the run for a path end it never sees, and the planner is called
+    # exactly once - measured, three runs in a row. The UGV configs in this
+    # repository carry 3.4 for the same reason.
+    #
+    # The cost is real: with the check this loose the interface will call a
+    # waypoint reached with the robot facing well away from the path. Tightening
+    # it belongs with a tracker that tracks heading per waypoint.
+    path_progression_yaw_thr: 3.4
+    path_progression_yaw_thr_min: 3.4
     path_progression_pitch_thr: 3.14
 
     interpolate_traj: true

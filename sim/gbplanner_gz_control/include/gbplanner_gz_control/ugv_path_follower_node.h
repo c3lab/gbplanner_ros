@@ -48,6 +48,20 @@ private:
 
   bool isAtPosition(const geometry_msgs::msg::Pose & target) const;
 
+  /// Advance current_pose_index_ to the path point the robot is nearest,
+  /// never backwards.
+  ///
+  /// The previous rule advanced only while the current waypoint was within
+  /// trans_tolerance, which quietly assumed the robot passes within half a
+  /// metre of every one of them. A differential drive rounding a corner does
+  /// not: it misses one, the index sticks on a waypoint already behind it, and
+  /// the lookahead then picks a point behind the robot too. The robot turns
+  /// back towards it, overshoots, turns again - commanded to rotate the whole
+  /// time and rotating nowhere. Measured on the ANYmal: the control interface's
+  /// carrot 2.76 m ahead, the robot stationary, and its heading moving 0.08 rad
+  /// in fifty seconds.
+  void advanceToNearest();
+
   /// The point on the path to steer at: the first one at least
   /// lookahead_distance away, searching forward from current_pose_index_.
   ///
@@ -98,6 +112,18 @@ private:
   bool goal_yaw_enable_{false};
   double odometry_timeout_{0.0};
   double lookahead_distance_{0.0};
+
+  /// Which way to turn when the target is exactly behind.
+  ///
+  /// A heading error of pi is an unstable equilibrium: wrapPi returns +pi or
+  /// -pi depending on floating-point noise, so the yaw command alternates sign
+  /// every control cycle and the robot shakes in place instead of turning
+  /// round. Measured on the ANYmal with its target 1.07 m directly behind it:
+  /// bearing error flipping between +3.14 and -3.14, command flipping between
+  /// +0.30 and -0.30, and the heading moving 0.08 rad in fifty seconds. So the
+  /// last unambiguous direction is remembered and used to break the tie, which
+  /// commits the robot to one way round.
+  double turn_direction_{1.0};
 
   // Stuck detection and recovery.
   double stuck_timeout_{0.0};
