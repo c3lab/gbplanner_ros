@@ -280,7 +280,26 @@
       # Gains:
       path_length_penalty: 0.01 # 0.4
       path_direction_penalty: 0.2 # 0.01
-      allow_sudden_dir_change: false
+      # true, where upstream's ugv/gzc/niosh_exploration says false. This is
+      # the one place this config leaves upstream on something that is not a
+      # robot dimension, and the reason is measured rather than argued.
+      #
+      # With false, Rrg::getBestPathSimplified refuses any best path whose
+      # direction differs from the running average by more than 120 degrees,
+      # and returns an EMPTY path instead - three times in a row, then it lets
+      # the fourth through and resets the counter. In a mine corridor the robot
+      # has to turn around, so the refusal fires constantly: measured live, 37
+      # direction changes and 38 empty paths over 122 planning calls. Each
+      # refusal costs a full planning cycle in which the control interface gets
+      # nothing, so the robot sits still, and every fourth one is accepted, so
+      # it lurches back the way it came. That is the "it stops, and stopping
+      # and restarting the planner fixes it" behaviour: the restart resets
+      # dir_change_count_.
+      #
+      # Upstream itself ships true for ugv/gzc/urban_exploration and
+      # uav/gzc/niosh_exploration, and true is also the default when the
+      # parameter is absent, which is what uav/gz/cave_exploration runs on.
+      allow_sudden_dir_change: true
       occupied_voxel_gain: 0.0
       free_voxel_gain:  0.0 # prefer directions towards more free voxels in case of the dead-end
       unknown_voxel_gain: 60.0

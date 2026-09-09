@@ -135,5 +135,24 @@
       <pose>-13 0 -2 0 0 -1.57</pose>
     </include>
 
-  </world>
+  
+    <!-- A catch floor 20 m below the tunnel.
+         niosh_osrf is one model, niosh_seg01, and outside its mesh there is
+         nothing: a robot that drives past the end of the segment falls forever.
+         Measured on a live run, the Husky reached z = -850 km and was still
+         accelerating, with the planner happily planning around it and nothing
+         logging an error. This plane does not fix the robot leaving the tunnel
+         - it makes it stop 20 m down instead of at minus infinity, which keeps
+         the simulation usable and the failure obvious. It is 20 m below the
+         tunnel floor, so nothing that drives inside the tunnel can reach it. -->
+    <model name="catch_floor">
+      <static>true</static>
+      <pose>0 0 -20 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>2000 2000</size></plane></geometry>
+        </collision>
+      </link>
+    </model>
+</world>
 </sdf>

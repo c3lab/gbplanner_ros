@@ -93,6 +93,8 @@ private:
   double recovery_speed_{0.0};
   double recovery_yaw_rate_{0.0};
   int recovery_attempts_max_{0};
+  double spin_timeout_{0.0};
+  double world_z_limit_{0.0};
 
   geometry_msgs::msg::Point stuck_reference_;
   rclcpp::Time stuck_reference_stamp_;
@@ -100,6 +102,12 @@ private:
   rclcpp::Time recovery_until_;
   bool in_recovery_{false};
   int recovery_attempts_{0};
+
+  rclcpp::Time spin_since_;
+  bool spinning_{false};
+  double start_z_{0.0};
+  bool have_start_z_{false};
+  bool left_the_world_{false};
 };
 
 }  // namespace gbplanner_gz_control

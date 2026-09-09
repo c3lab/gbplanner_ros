@@ -33,7 +33,8 @@ UGVPathFollowerNode::UGVPathFollowerNode(const rclcpp::NodeOptions & options)
 : rclcpp::Node("ugv_path_follower_node", options),
   last_odometry_stamp_(0, 0, RCL_ROS_TIME),
   stuck_reference_stamp_(0, 0, RCL_ROS_TIME),
-  recovery_until_(0, 0, RCL_ROS_TIME)
+  recovery_until_(0, 0, RCL_ROS_TIME),
+  spin_since_(0, 0, RCL_ROS_TIME)
 {
   world_frame_ = declare_parameter<std::string>("world_frame", "world");
   const double control_rate = declare_parameter<double>("control_rate", 20.0);
@@ -53,6 +54,8 @@ UGVPathFollowerNode::UGVPathFollowerNode(const rclcpp::NodeOptions & options)
   recovery_speed_ = declare_parameter<double>("recovery_speed", 0.4);
   recovery_yaw_rate_ = declare_parameter<double>("recovery_yaw_rate", 0.4);
   recovery_attempts_max_ = declare_parameter<int>("recovery_attempts_max", 3);
+  spin_timeout_ = declare_parameter<double>("spin_timeout", 15.0);
+  world_z_limit_ = declare_parameter<double>("world_z_limit", 50.0);
 
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("command/velocity", 1);
   cmd_pose_vis_pub_ = create_publisher<geometry_msgs::msg::PoseStamped>("command/pose_vis", 1);
@@ -92,6 +95,10 @@ void UGVPathFollowerNode::odometryCallback(const nav_msgs::msg::Odometry & odom)
   current_pose_ = odom.pose.pose;
   last_odometry_stamp_ = now();
   have_odometry_ = true;
+  if (!have_start_z_) {
+    start_z_ = current_pose_.position.z;
+    have_start_z_ = true;
+  }
 }
 
 bool UGVPathFollowerNode::isAtPosition(const geometry_msgs::msg::Pose & target) const
@@ -179,6 +186,26 @@ void UGVPathFollowerNode::controlStep()
 {
   geometry_msgs::msg::Twist cmd;
 
+  // Left the world. gz worlds built from a single mesh have nothing outside it
+  // -- niosh_osrf is one model, niosh_seg01 -- so a robot that drives past the
+  // end of the segment falls, and keeps falling. Measured on a live run:
+  // z = -850 km and still accelerating, the planner still planning around it,
+  // the control interface still waiting, and nothing anywhere saying so. Stop
+  // driving and say it once, loudly, rather than steering a falling robot.
+  if (have_start_z_ && std::abs(current_pose_.position.z - start_z_) > world_z_limit_) {
+    if (!left_the_world_) {
+      left_the_world_ = true;
+      RCLCPP_ERROR(
+        get_logger(),
+        "Robot is %.0f m from the height it started at (z = %.1f). It has left "
+        "the world -- these gz worlds are a single mesh with nothing outside "
+        "it. Not commanding any further; this run is over.",
+        current_pose_.position.z - start_z_, current_pose_.position.z);
+    }
+    cmd_vel_pub_->publish(cmd);
+    return;
+  }
+
   // Stop on stale or missing odometry. The opposite of the UAV follower, which
   // commands a hover, and for the same underlying reason: a zero command is
   // what "stay put" means for the actuator underneath. DiffDrive holds the last
@@ -236,6 +263,31 @@ void UGVPathFollowerNode::controlStep()
       cmd.linear.x =
         std::min(kp_lin_ * distance, v_max_) * std::cos(heading_error);
     }
+  }
+
+  // Turning on the spot is not being stuck, which is why handleStuck ignores
+  // it -- but turning on the spot *forever* is a failure of its own, and it was
+  // invisible. A full turn at yaw_rate_max takes about 3.5 s, so anything past
+  // spin_timeout is a heading the robot is not converging on: either it cannot
+  // rotate, or the target keeps moving out from under it.
+  const bool spinning_in_place =
+    std::abs(cmd.linear.x) < 1e-3 && std::abs(cmd.angular.z) > 1e-3;
+  if (spinning_in_place) {
+    if (!spinning_) {
+      spinning_ = true;
+      spin_since_ = now();
+    } else if ((now() - spin_since_).seconds() > spin_timeout_) {
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 5000,
+        "Turning on the spot for %.0f s without converging on a heading; "
+        "dropping the path.", (now() - spin_since_).seconds());
+      poses_.clear();
+      spinning_ = false;
+      cmd_vel_pub_->publish(geometry_msgs::msg::Twist());
+      return;
+    }
+  } else {
+    spinning_ = false;
   }
 
   if (handleStuck(now(), cmd.linear.x)) {
