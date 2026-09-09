@@ -286,7 +286,7 @@
              puts base_link 0.6 m up, which is PlanningParams.robot_height. They
              sit inside the leg visuals. -->
         <link name="front_left_wheel_link">
-            <pose>0.28 0.28 -0.45 1.5707963267948966 0 0</pose>
+            <pose>0.28 0.28 -0.45 0 0 0</pose>
             <inertial>
                 <mass>1.0</mass>
                 <inertia>
@@ -296,6 +296,7 @@
                 </inertia>
             </inertial>
             <collision name="collision">
+                <pose>0 0 0 1.5707963267948966 0 0</pose>
                 <geometry><cylinder><radius>0.15</radius><length>0.08</length></cylinder></geometry>
                 <surface>
                     <contact><ode><kp>1e+07</kp><kd>1</kd></ode></contact>
@@ -307,13 +308,16 @@
             <parent>base_link</parent>
             <child>front_left_wheel_link</child>
             <axis>
-                <xyz>0 0 1</xyz>
+                <!-- +y in the link frame, which the link no longer rotates, so
+                     it is +y in the model too. This is the husky's convention
+                     and the reason it drives forwards. -->
+                <xyz>0 1 0</xyz>
                 <limit><lower>-1e16</lower><upper>1e16</upper></limit>
             </axis>
         </joint>
 
         <link name="front_right_wheel_link">
-            <pose>0.28 -0.28 -0.45 1.5707963267948966 0 0</pose>
+            <pose>0.28 -0.28 -0.45 0 0 0</pose>
             <inertial>
                 <mass>1.0</mass>
                 <inertia>
@@ -323,6 +327,7 @@
                 </inertia>
             </inertial>
             <collision name="collision">
+                <pose>0 0 0 1.5707963267948966 0 0</pose>
                 <geometry><cylinder><radius>0.15</radius><length>0.08</length></cylinder></geometry>
                 <surface>
                     <contact><ode><kp>1e+07</kp><kd>1</kd></ode></contact>
@@ -334,13 +339,16 @@
             <parent>base_link</parent>
             <child>front_right_wheel_link</child>
             <axis>
-                <xyz>0 0 1</xyz>
+                <!-- +y in the link frame, which the link no longer rotates, so
+                     it is +y in the model too. This is the husky's convention
+                     and the reason it drives forwards. -->
+                <xyz>0 1 0</xyz>
                 <limit><lower>-1e16</lower><upper>1e16</upper></limit>
             </axis>
         </joint>
 
         <link name="rear_left_wheel_link">
-            <pose>-0.28 0.28 -0.45 1.5707963267948966 0 0</pose>
+            <pose>-0.28 0.28 -0.45 0 0 0</pose>
             <inertial>
                 <mass>1.0</mass>
                 <inertia>
@@ -350,6 +358,7 @@
                 </inertia>
             </inertial>
             <collision name="collision">
+                <pose>0 0 0 1.5707963267948966 0 0</pose>
                 <geometry><cylinder><radius>0.15</radius><length>0.08</length></cylinder></geometry>
                 <surface>
                     <contact><ode><kp>1e+07</kp><kd>1</kd></ode></contact>
@@ -361,13 +370,16 @@
             <parent>base_link</parent>
             <child>rear_left_wheel_link</child>
             <axis>
-                <xyz>0 0 1</xyz>
+                <!-- +y in the link frame, which the link no longer rotates, so
+                     it is +y in the model too. This is the husky's convention
+                     and the reason it drives forwards. -->
+                <xyz>0 1 0</xyz>
                 <limit><lower>-1e16</lower><upper>1e16</upper></limit>
             </axis>
         </joint>
 
         <link name="rear_right_wheel_link">
-            <pose>-0.28 -0.28 -0.45 1.5707963267948966 0 0</pose>
+            <pose>-0.28 -0.28 -0.45 0 0 0</pose>
             <inertial>
                 <mass>1.0</mass>
                 <inertia>
@@ -377,6 +389,7 @@
                 </inertia>
             </inertial>
             <collision name="collision">
+                <pose>0 0 0 1.5707963267948966 0 0</pose>
                 <geometry><cylinder><radius>0.15</radius><length>0.08</length></cylinder></geometry>
                 <surface>
                     <contact><ode><kp>1e+07</kp><kd>1</kd></ode></contact>
@@ -388,7 +401,10 @@
             <parent>base_link</parent>
             <child>rear_right_wheel_link</child>
             <axis>
-                <xyz>0 0 1</xyz>
+                <!-- +y in the link frame, which the link no longer rotates, so
+                     it is +y in the model too. This is the husky's convention
+                     and the reason it drives forwards. -->
+                <xyz>0 1 0</xyz>
                 <limit><lower>-1e16</lower><upper>1e16</upper></limit>
             </axis>
         </joint>

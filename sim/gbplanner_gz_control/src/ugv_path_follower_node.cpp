@@ -295,13 +295,30 @@ void UGVPathFollowerNode::controlStep()
     } else {
       heading_error = turn_direction_ * std::abs(heading_error);
     }
-    cmd.angular.z = clampAbs(kp_yaw_ * heading_error, yaw_rate_max_);
-    if (std::abs(heading_error) < heading_align_threshold_) {
-      // cos() rather than a hard gate: the speed then falls off continuously as
-      // the heading error grows, instead of stepping to zero at the threshold
-      // and making the robot stutter along a curve.
-      cmd.linear.x =
-        std::min(kp_lin_ * distance, v_max_) * std::cos(heading_error);
+
+    if (std::abs(heading_error) >= heading_align_threshold_) {
+      // Too far off to drive out of: turn on the spot.
+      cmd.angular.z = clampAbs(kp_yaw_ * heading_error, yaw_rate_max_);
+    } else {
+      // Pure pursuit proper. The arc through the lookahead point has curvature
+      // 2 sin(alpha) / L, and driving that arc is what puts the robot ON the
+      // point rather than near it.
+      //
+      // The clamp underneath is the part that matters. A differential drive
+      // cannot turn tighter than v / yaw_rate_max, so a lookahead closer than
+      // that radius is unreachable: steering at it saturates the yaw rate and
+      // the robot circles it forever, driving and turning and arriving nowhere.
+      // Measured before this: 24.3 m travelled and 2.0 m from the start, an
+      // orbit of about 1.7 m radius, which is exactly v_max / yaw_rate_max.
+      // Capping the speed to what the achievable arc allows trades forward
+      // progress for actually closing on the point.
+      const double curvature = 2.0 * std::sin(heading_error) / distance;
+      double speed = std::min(kp_lin_ * distance, v_max_);
+      if (std::abs(curvature) > 1e-6) {
+        speed = std::min(speed, yaw_rate_max_ / std::abs(curvature));
+      }
+      cmd.linear.x = speed;
+      cmd.angular.z = clampAbs(speed * curvature, yaw_rate_max_);
     }
   }
 
