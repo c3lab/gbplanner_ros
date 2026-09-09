@@ -13,6 +13,35 @@ ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 # Override on the command line: make run LAUNCH_FILE=ugv_gz_urban_exploration.launch.py
 LAUNCH_FILE ?= uav_gz_cave_exploration.launch.py
 
+# ---------------------------------------------------------------------------
+# Named scenarios
+# ---------------------------------------------------------------------------
+# One line per demo from the upstream wiki that this repository can actually
+# run: `make run-sim <name>` starts simulator, planner, control interface and
+# RViz for it in one container. The name is also the container name suffix, so
+# `make ps` and `make stop` see it.
+#
+# Kept as SCENARIO_<name> variables rather than a table make would have to
+# parse, because $(SCENARIO_$(word)) is the whole lookup.
+SCENARIOS := uav_cave uav_cargo uav_niosh ugv_niosh ugv_urban
+
+SCENARIO_uav_cave   := uav_gz_cave_exploration.launch.py
+SCENARIO_uav_cargo  := uav_gz_cargo_inspection.launch.py
+SCENARIO_uav_niosh  := uav_gz_niosh_exploration.launch.py
+SCENARIO_ugv_niosh  := ugv_gz_niosh_exploration.launch.py
+SCENARIO_ugv_urban  := ugv_gz_urban_exploration.launch.py
+
+DESC_uav_cave   := UAV, DARPA SubT cave (assets)
+DESC_uav_cargo  := UAV, cargo tank, actuated camera (assets)
+DESC_uav_niosh  := UAV, NIOSH mine (assets)
+DESC_ugv_niosh  := UGV, NIOSH mine (assets)
+DESC_ugv_urban  := UGV, SubT Urban Circuit, multi-level (assets)
+
+# Extra `ros2 launch` arguments for a scenario, e.g. to run one without the
+# external assets or without the gz GUI:
+#   make run-sim ugv_niosh ARGS="world:=cave_box headless:=true"
+ARGS ?=
+
 # Package rebuilt by `make rebuild` / `make run-sim <ns> rebuild`.
 REBUILD_PKG ?= gbplanner
 
@@ -38,20 +67,33 @@ SUBT_CAVE_SIM ?= $(shell dirname $(ROOT_DIR))/gbplanner_ros/bootstrap/sim/subt_c
 #   make run-sim robot1 RVIZ=false
 RVIZ ?= true
 
-# `make run-sim robot0 [rebuild]` - read the words after the target as the
-# namespace plus an optional "rebuild" keyword, then register a no-op rule for
+# `make run-sim <word> [rebuild]` - read the words after the target as one
+# argument plus an optional "rebuild" keyword, then register a no-op rule for
 # each of them so make does not treat them as goals of their own. While run-sim
 # is the first goal, "rebuild" is one of those stubs, so the real target below
 # is defined out - run-sim reaches it through a sub-make instead.
+#
+# The one word means two things, and which one is decided by looking it up in
+# SCENARIOS rather than by a flag. A scenario name starts that scenario;
+# anything else is a namespace, which is what run-sim meant before scenarios
+# existed and what multi-robot still needs. The lookup is exact, so a mistyped
+# scenario does fall through to the namespace reading - but not silently: that
+# branch prints which reading it took and lists the scenario names, so a run
+# that came up without a simulator says why on its first line.
 ifeq (run-sim,$(firstword $(MAKECMDGOALS)))
   RUN_SIM_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
   RUN_SIM_REBUILD := $(filter rebuild,$(RUN_SIM_ARGS))
-  RUN_SIM_NS := $(firstword $(filter-out rebuild,$(RUN_SIM_ARGS)))
-  ifneq ($(RUN_SIM_NS),)
-    NAMESPACE := $(RUN_SIM_NS)
+  RUN_SIM_WORD := $(firstword $(filter-out rebuild,$(RUN_SIM_ARGS)))
+  ifneq ($(RUN_SIM_WORD),)
+    ifneq ($(filter $(RUN_SIM_WORD),$(SCENARIOS)),)
+      SCENARIO := $(RUN_SIM_WORD)
+    else
+      NAMESPACE := $(RUN_SIM_WORD)
+    endif
   endif
   $(foreach arg,$(RUN_SIM_ARGS),$(eval $(arg):;@:))
 endif
+SCENARIO ?=
 NAMESPACE ?= robot0
 
 export ROOT_DIR
@@ -64,6 +106,8 @@ export REBUILD_PKG
 export ROS_DOMAIN_ID
 export SUBT_CAVE_SIM
 export RVIZ
+export SCENARIO
+export LAUNCH_ARGS
 
 COMPOSE := docker compose
 CONTAINER_NAME := gbplanner_ros2
@@ -108,19 +152,42 @@ rebuild: ## Rebuild one package (REBUILD_PKG=$(REBUILD_PKG)) in the workspace
 	@$(COMPOSE) run --rm --no-deps rebuild
 endif
 
-run-sim: ## Launch gbplanner + gz sim for one namespace: make run-sim robot0 [rebuild]
+run-sim: ## Run a scenario (make run-sim ugv_niosh) or one namespaced stack (make run-sim robot0) [rebuild]
 	@test -n "$$SSH_AUTH_SOCK" || (echo "SSH_AUTH_SOCK is not set. Start ssh-agent and run ssh-add before make run-sim." && exit 1)
 ifneq ($(RUN_SIM_REBUILD),)
 	@$(MAKE) rebuild
 endif
 	@xhost +SI:localuser:root >/dev/null
-	@echo "Launching gbplanner + gz sim for namespace '$(NAMESPACE)' on ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) (use_sim_time:=true, rviz:=$(RVIZ))..."
-	@# -p isolates each robot into its own compose project, so a second
-	@# `make run-sim robot1` adds containers instead of recreating robot0's.
+ifneq ($(SCENARIO),)
+	@echo "Scenario '$(SCENARIO)': $(DESC_$(SCENARIO))"
+	@echo "Launching $(SCENARIO_$(SCENARIO)) $(ARGS) on ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) (rviz:=$(RVIZ))..."
+	@# -p isolates each scenario into its own compose project, the same way the
+	@# namespace path below does, so two of them do not recreate each other's
+	@# containers.
+	@LAUNCH_FILE=$(SCENARIO_$(SCENARIO)) LAUNCH_ARGS="$(ARGS)" 	  $(COMPOSE) -p gbplanner-$(SCENARIO) up --abort-on-container-exit --remove-orphans run-scenario
+else
+	@echo "'$(NAMESPACE)' is not a scenario name, so it is read as a namespace."
+	@echo "  scenarios: $(SCENARIOS)   (make scenarios for what each one is)"
+	@echo "Launching the gbplanner stack for namespace '$(NAMESPACE)' on ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) (use_sim_time:=true, rviz:=$(RVIZ))..."
+	@echo "  This half expects a simulator someone else started; a scenario brings its own."
 	@$(COMPOSE) -p gbplanner-$(NAMESPACE) up --abort-on-container-exit --remove-orphans run-sim
+endif
 
-stop-sim: ## Stop the sim stack for one namespace: make stop-sim NAMESPACE=robot0
-	@$(COMPOSE) -p gbplanner-$(NAMESPACE) down
+scenarios: ## List the named scenarios run-sim accepts
+	@echo "make run-sim <scenario> [rebuild] [ARGS=\"...\"]"
+	@echo ""
+	@$(foreach s,$(SCENARIOS),printf '  \033[36m%-12s\033[0m %s\n' '$(s)' '$(DESC_$(s))';)
+	@echo ""
+	@echo "  (assets) = needs the subt_cave_sim model set, mounted from SUBT_CAVE_SIM"
+	@echo "             from $(SUBT_CAVE_SIM)"
+	@echo "  Most scenarios also accept world:=cave_box, which needs no assets:"
+	@echo "    make run-sim ugv_niosh ARGS=\"world:=cave_box\""
+	@echo ""
+	@echo "Any other word is read as a namespace instead, for multi-robot:"
+	@echo "  make run-sim robot0 / make run-sim robot1 RVIZ=false"
+
+stop-sim: ## Stop the stack for one scenario or namespace: make stop-sim SCENARIO=ugv_niosh
+	@$(COMPOSE) -p gbplanner-$(if $(SCENARIO),$(SCENARIO),$(NAMESPACE)) down
 
 enter-dev: ## Attach a shell to the running dev container
 	@echo "Entering $(CONTAINER_NAME)-dev container..."
@@ -136,6 +203,20 @@ stop: ## Stop and remove any running gbplanner containers
 	@$(COMPOSE) down --remove-orphans
 	@docker ps -a --filter "name=$(CONTAINER_NAME)-" --format '{{.ID}}' | xargs -r docker rm -f >/dev/null
 	@echo "Remaining $(CONTAINER_NAME) containers: $$(docker ps -a --filter "name=$(CONTAINER_NAME)-" --format '{{.ID}}' | wc -l)"
+	@# Every service runs with ipc: host, so Fast DDS's shared-memory segments
+	@# live in the host's /dev/shm. A container that is killed rather than shut
+	@# down leaves its segments behind, and once a few hundred have piled up ROS
+	@# 2 discovery inside a *new* container stops working entirely: `ros2 topic
+	@# list` comes back empty while gz is perfectly healthy, which reads as a
+	@# simulator that failed to start. Counted here rather than deleted, because
+	@# any ROS 2 process outside this repo owns segments in the same directory.
+	@n=$$(ls /dev/shm 2>/dev/null | grep -c '^fastrtps_' || true); 	if [ "$$n" -gt 100 ]; then 	  echo "Stale Fast DDS segments in /dev/shm: $$n. Run 'make clean-shm' with no ROS 2 process running."; 	fi
+
+clean-shm: ## Remove leaked Fast DDS shared-memory segments (stop everything first)
+	@test -z "$$(pgrep -f '[g]bplanner_node|[p]ci_general_ros_node|[p]arameter_bridge|[g]z sim')" 	  || (echo "ROS 2 or gz processes are still running; 'make stop' first." && exit 1)
+	@# The segments are owned by root because they were created inside the
+	@# containers, so the removal happens inside one too.
+	@$(COMPOSE) run --rm --no-deps dev bash -c 	  'before=$$(ls /dev/shm | grep -c "^fastrtps_"); rm -f /dev/shm/fastrtps_* /dev/shm/sem.fastrtps_*; 	   echo "removed $$before segments, $$(ls /dev/shm | grep -c "^fastrtps_") left"'
 
 ps: ## Show what this repo currently has running
 	@echo "Containers:"
@@ -152,5 +233,9 @@ help: ## Show this help message
 	@echo ""
 	@echo "Targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "} {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "Scenarios for run-sim:"
+	@$(foreach s,$(SCENARIOS),printf '  \033[36m%-20s\033[0m %s\n' '$(s)' '$(DESC_$(s))';)
+	@echo "  (make scenarios for the assets each one needs)"
 
-.PHONY: build bootstrap build-ws build-all rebuild run-dev run run-sim stop-sim enter-dev stop ps clean help
+.PHONY: build bootstrap build-ws build-all rebuild run-dev run run-sim scenarios stop-sim enter-dev stop clean-shm ps clean help

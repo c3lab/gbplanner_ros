@@ -24,18 +24,28 @@ Arguments (all optional):
 
     world               worlds/<name>.sdf in this package, or an absolute path.
                         default: cave_box
+    robot_model         which models/<name>/model.sdf.in to spawn, and with it
+                        which follower to run: rmf_owl (multicopter) or
+                        marble_husky (differential drive). default: rmf_owl
     robot_name          gz model name, gz topic prefix, TF frame prefix and the
-                        ROS namespace of every bridged robot topic.
-                        default: rmf_owl
+                        ROS namespace of every bridged robot topic. Defaults to
+                        robot_model, so the two are the same string unless two
+                        robots of one kind are spawned.
     x y z roll pitch yaw  spawn pose. default: 0 0 1 0 0 0
     headless            gz server with no GUI. default: true
     headless_rendering  offscreen EGL rendering, needed for gpu_lidar. default: true
     use_sim_time        on the nodes started here. default: true
     bridge              start ros_gz_bridge. default: true
-    controller          start uav_path_follower_node. default: true
+    controller          start the path follower for robot_model. default: true
     rviz                start rviz2 on rviz/sim.rviz. default: false
     camera              simulate and bridge the RGB + depth cameras. Off means
-                        gz never renders them. default: false
+                        gz never renders them. Implies cam_pitch on the rmf_owl,
+                        whose depth camera hangs off the pitched link.
+                        default: false
+    cam_pitch           rmf_owl only: the actuated camera joint, its position
+                        controller and its joint-state publisher, plus the two
+                        bridged topics the inspection planner drives it with.
+                        default: false
     lidar               simulate and bridge the gpu_lidar. default: true
     path_topic          the nav_msgs/Path the controller follows.
                         default: /gbplanner_path
@@ -52,7 +62,9 @@ Arguments (all optional):
     controller_config   override the follower's parameter YAML. default: the
                         one installed by gbplanner_gz_control
 
-Published for the planner (with robot_name=rmf_owl):
+Published for the planner (with robot_model=robot_name=rmf_owl; the
+marble_husky publishes the same set at the same rates, minus /<robot>/enable,
+which only the multicopter's velocity controller needs):
 
     /clock                          rosgraph_msgs/Clock
     /rmf_owl/odometry               nav_msgs/Odometry           50 Hz
@@ -98,9 +110,60 @@ from launch_ros.actions import Node
 # file is a spawn that silently gets the wrong name.
 GENERATED_SDF_DIR = Path("/tmp/gbplanner_gz_sim")
 
+# What differs between the two robots, in one place. Everything else below --
+# the world, the spawn, TF, /clock, odometry, imu, lidar -- is identical for
+# both, because both are gz models publishing through the same systems.
+#
+# `enable` is the asymmetry worth naming: MulticopterVelocityControl ignores
+# every Twist until something publishes true on that topic, while DiffDrive
+# acts on the first one it receives. Bridging a topic the husky has no
+# subscriber for would be a silently dead ROS publisher.
+_ROBOTS = {
+    "rmf_owl": {
+        "follower": "uav_path_follower_node",
+        "follower_config": "uav_path_follower.yaml",
+        "enable_topic": True,
+        # The actuated camera the inspection scenarios pitch. std_msgs/Float64
+        # is what pci_general publishes and gz.msgs.Double what
+        # JointPositionController expects; the state comes back as a
+        # gz.msgs.Model, which the bridge renders as a JointState -- the type
+        # both gbplanner_node and the control interface subscribe to.
+        "cam_pitch_bridge": [
+            "/{r}/camera_pitch@std_msgs/msg/Float64]gz.msgs.Double",
+            "/{r}/camera_pitch_state@sensor_msgs/msg/JointState[gz.msgs.Model",
+        ],
+        # rmf_owl carries a separate RGB camera and depth camera.
+        "camera_bridge": [
+            "/{r}/camera_front@sensor_msgs/msg/Image[gz.msgs.Image",
+            "/{r}/camera_front/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
+            "/{r}/depth_camera_front@sensor_msgs/msg/Image[gz.msgs.Image",
+            "/{r}/depth_camera_front/points"
+            "@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked",
+        ],
+    },
+    "marble_husky": {
+        "follower": "ugv_path_follower_node",
+        "follower_config": "ugv_path_follower.yaml",
+        "enable_topic": False,
+        "cam_pitch_bridge": [],
+        # One rgbd_camera sensor, which fans out into four gz topics under the
+        # sensor's own <topic> prefix.
+        "camera_bridge": [
+            "/{r}/camera_front/image@sensor_msgs/msg/Image[gz.msgs.Image",
+            "/{r}/camera_front/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
+            "/{r}/camera_front/depth_image@sensor_msgs/msg/Image[gz.msgs.Image",
+            "/{r}/camera_front/points"
+            "@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked",
+        ],
+    },
+}
+
 _ARGS = [
     ("world", "cave_box", "worlds/<name>.sdf in this package, or an absolute path."),
-    ("robot_name", "rmf_owl", "gz model name; prefixes every gz topic and TF frame."),
+    ("robot_model", "rmf_owl",
+     "models/<name>/model.sdf.in to spawn: rmf_owl or marble_husky."),
+    ("robot_name", "", "gz model name; prefixes every gz topic and TF frame. "
+                       "Empty means robot_model."),
     ("x", "0.0", "Spawn x [m]."),
     ("y", "0.0", "Spawn y [m]."),
     ("z", "1.0", "Spawn z [m]."),
@@ -110,9 +173,11 @@ _ARGS = [
     ("headless", "true", "Run the gz server without its GUI."),
     ("use_sim_time", "true", "Set use_sim_time on the nodes started here."),
     ("bridge", "true", "Start ros_gz_bridge."),
-    ("controller", "true", "Start uav_path_follower_node."),
+    ("controller", "true", "Start the path follower that goes with robot_model."),
     ("rviz", "false", "Start rviz2 on this package's sim.rviz."),
     ("camera", "false", "Simulate and bridge the RGB and depth cameras."),
+    ("cam_pitch", "false",
+     "rmf_owl only: the actuated camera joint and its two bridged topics."),
     ("lidar", "true", "Simulate and bridge the gpu_lidar."),
     ("path_topic", "/gbplanner_path", "nav_msgs/Path the controller follows."),
     ("resource_path", "", "Extra directories for GZ_SIM_RESOURCE_PATH."),
@@ -150,9 +215,9 @@ def _world_name(world_file: str) -> str:
     return name
 
 
-def _render_model(share: str, robot_name: str, blocks: dict, subs: dict) -> str:
+def _render_model(share: str, model: str, robot_name: str, blocks: dict, subs: dict) -> str:
     """Substitute {{...}} and drop the optional blocks that are switched off."""
-    template = Path(share) / "models" / "rmf_owl" / "model.sdf.in"
+    template = Path(share) / "models" / model / "model.sdf.in"
     text = template.read_text()
 
     for block, keep in blocks.items():
@@ -176,14 +241,26 @@ def _setup(context, *args, **kwargs):
         return cfg(name).lower() in ("true", "1", "yes")
 
     share = get_package_share_directory("gbplanner_gz_sim")
-    robot = cfg("robot_name")
+    model = cfg("robot_model")
+    if model not in _ROBOTS:
+        raise RuntimeError(
+            f"unknown robot_model '{model}'; have {sorted(_ROBOTS)}")
+    spec = _ROBOTS[model]
+    robot = cfg("robot_name") or model
     world_file = _resolve_world(share, cfg("world"))
     world = _world_name(world_file)
 
+    # camera implies cam_pitch: the depth camera sits on the pitched link, so
+    # keeping the sensor while dropping the link it hangs from would render an
+    # SDF gz cannot load.
+    cam_pitch = flag("cam_pitch") or flag("camera")
+
     model_file = _render_model(
         share,
+        model,
         robot,
-        blocks={"camera": flag("camera"), "lidar": flag("lidar")},
+        blocks={"camera": flag("camera"), "cam_pitch": cam_pitch,
+                "lidar": flag("lidar")},
         subs={
             "robot_name": robot,
             "lidar_horizontal_samples": cfg("lidar_horizontal_samples"),
@@ -218,10 +295,20 @@ def _setup(context, *args, **kwargs):
     # be tuned per world -- darpa_cave_01 spends ~30 s loading tile meshes before
     # that service exists, cave_box under a second -- and getting it wrong is a
     # simulation that comes up with no robot in it and no error anywhere. So wait
-    # for the service itself.
+    # for the world to come up first.
+    #
+    # The wait is on the world's clock topic and not on the create service, even
+    # though the service is what `create` calls. `gz service -l` has to ask every
+    # node it has discovered for its service list, so one stale peer -- a gz
+    # server that was killed rather than shut down, which is what happens every
+    # time a run is interrupted -- makes it return nothing for minutes while
+    # `gz topic -l` stays healthy. Waiting on the service then hangs with Gazebo
+    # running and no robot in it, which looks exactly like a world that failed to
+    # load. Both appear when the world finishes loading, so the topic is the same
+    # signal without the failure mode.
     spawn_command = (
         f'for i in $(seq 1 {int(float(cfg("spawn_timeout")))}); do '
-        f'  gz service -l 2>/dev/null | grep -qx "/world/{world}/create" && break; sleep 1; '
+        f'  gz topic -l 2>/dev/null | grep -qx "/world/{world}/clock" && break; sleep 1; '
         f'done; '
         f'exec ros2 run ros_gz_sim create -world {world} -file {model_file} '
         f'-name {robot} -allow_renaming false '
@@ -241,19 +328,16 @@ def _setup(context, *args, **kwargs):
         f"/{robot}/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry",
         f"/{robot}/imu@sensor_msgs/msg/Imu[gz.msgs.IMU",
         f"/{robot}/command/velocity@geometry_msgs/msg/Twist]gz.msgs.Twist",
-        f"/{robot}/enable@std_msgs/msg/Bool]gz.msgs.Boolean",
     ]
+    if spec["enable_topic"]:
+        bridge_args.append(f"/{robot}/enable@std_msgs/msg/Bool]gz.msgs.Boolean")
     if flag("lidar"):
         bridge_args.append(
             f"/{robot}/lidar/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked")
     if flag("camera"):
-        bridge_args += [
-            f"/{robot}/camera_front@sensor_msgs/msg/Image[gz.msgs.Image",
-            f"/{robot}/camera_front/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
-            f"/{robot}/depth_camera_front@sensor_msgs/msg/Image[gz.msgs.Image",
-            f"/{robot}/depth_camera_front/points"
-            f"@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked",
-        ]
+        bridge_args += [arg.format(r=robot) for arg in spec["camera_bridge"]]
+    if cam_pitch:
+        bridge_args += [arg.format(r=robot) for arg in spec["cam_pitch_bridge"]]
 
     bridge = Node(
         package="ros_gz_bridge",
@@ -273,22 +357,25 @@ def _setup(context, *args, **kwargs):
     )
 
     controller_config = cfg("controller_config") or os.path.join(
-        get_package_share_directory("gbplanner_gz_control"), "config", "uav_path_follower.yaml"
+        get_package_share_directory("gbplanner_gz_control"),
+        "config", spec["follower_config"],
     )
+    controller_remaps = [
+        ("command/path", cfg("path_topic")),
+        ("odometry", f"/{robot}/odometry"),
+        ("command/velocity", f"/{robot}/command/velocity"),
+    ]
+    if spec["enable_topic"]:
+        controller_remaps.append(("enable", f"/{robot}/enable"))
     controller = Node(
         package="gbplanner_gz_control",
-        executable="uav_path_follower_node",
-        name="uav_path_follower_node",
+        executable=spec["follower"],
+        name=spec["follower"],
         namespace=robot,
         output="screen",
         condition=IfCondition(LaunchConfiguration("controller")),
         parameters=[controller_config, {"use_sim_time": use_sim_time}],
-        remappings=[
-            ("command/path", cfg("path_topic")),
-            ("odometry", f"/{robot}/odometry"),
-            ("command/velocity", f"/{robot}/command/velocity"),
-            ("enable", f"/{robot}/enable"),
-        ],
+        remappings=controller_remaps,
     )
 
     # gz's PosePublisher roots the tree at the *world's name* -- "cave_box",

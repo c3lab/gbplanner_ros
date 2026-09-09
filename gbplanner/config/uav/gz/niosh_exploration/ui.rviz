@@ -1,0 +1,900 @@
+Panels:
+- Class: rviz_common/Displays
+  Help Height: 0
+  Name: Displays
+  Property Tree Widget:
+    Expanded: null
+    Splitter Ratio: 0.5941176414489746
+  Tree Height: 1880
+- Class: rviz_common/Selection
+  Name: Selection
+- Class: rviz_common/Tool Properties
+  Expanded: null
+  Name: Tool Properties
+  Splitter Ratio: 0.5886790156364441
+- Class: rviz_common/Views
+  Expanded:
+  - /Current View1
+  Name: Views
+  Splitter Ratio: 0.5
+- Class: rviz_common/Time
+  Name: Time
+  SyncMode: 0
+  SyncSource: SurfacePCL
+- Class: gbplanner_ui/GbPlanner Control
+  Name: GbPlanner Control
+Visualization Manager:
+  Class: ''
+  Displays:
+  - Alpha: 1
+    Cell Size: 1
+    Class: rviz_default_plugins/Grid
+    Color: 160; 160; 164
+    Enabled: false
+    Line Style:
+      Line Width: 0.029999999329447746
+      Value: Lines
+    Name: Grid
+    Normal Cell Count: 0
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0
+    Plane: XY
+    Plane Cell Count: 100
+    Reference Frame: <Fixed Frame>
+    Value: false
+  - Class: rviz_common/Group
+    Displays:
+    - Class: rviz_default_plugins/TF
+      Enabled: false
+      Filter (blacklist): ''
+      Filter (whitelist): ''
+      Frame Timeout: 15
+      Frames:
+        All Enabled: false
+      Marker Scale: 20
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: false
+      Tree: {}
+      Update Interval: 0
+      Value: false
+    - Class: rviz_default_plugins/Axes
+      Enabled: true
+      Length: 1
+      Name: BaseLink
+      Radius: 0.05000000074505806
+      Reference Frame: rmf_owl/base_link
+      Show Trail: false
+      Value: true
+    - Class: rviz_default_plugins/Axes
+      Enabled: true
+      Length: 2
+      Name: World
+      Radius: 0.10000000149011612
+      Reference Frame: world
+      Show Trail: false
+      Value: true
+    Enabled: true
+    Name: Axes
+  - Angle Tolerance: 0.30000001192092896
+    Class: rviz_default_plugins/Odometry
+    Covariance:
+      Orientation:
+        Alpha: 0.5
+        Color: 255; 255; 127
+        Color Style: Unique
+        Frame: Local
+        Offset: 1
+        Scale: 1
+        Value: true
+      Position:
+        Alpha: 0.30000001192092896
+        Color: 204; 51; 204
+        Scale: 1
+        Value: true
+      Value: false
+    Enabled: false
+    Keep: 0
+    Name: Odometry
+    Position Tolerance: 0.30000001192092896
+    Shape:
+      Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Color: 255; 0; 0
+      Head Length: 0.20000000298023224
+      Head Radius: 0.4000000059604645
+      Shaft Length: 0.20000000298023224
+      Shaft Radius: 0.20000000298023224
+      Value: Arrow
+    Topic:
+      Depth: 10
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /rmf_owl/odometry
+    Value: false
+  - Class: rviz_common/Group
+    Displays:
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: PlanningFailed
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/planning_failed
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: VolumetricGain
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/volumetric_gains
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: SensorFOV
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/sensor_fov
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: BestPaths
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/best_planning_paths
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: ShortestPaths
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/shortest_paths
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: RobotState
+      Namespaces:
+        extension: true
+        extension_aligned: true
+        heading: true
+        size: true
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/robot_state
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: PlanningWorkspace
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/planning_workspace
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: GlobalGraph
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/planning_global_graph
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: HomingPath
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/planning_homing_path
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: PlanningGraph
+      Namespaces:
+        edges: false
+        heading: false
+        vertices: true
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/planning_graph
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: Sampler
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/sampler
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: RefPath
+      Namespaces:
+        ref_path: true
+        vertices: true
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/ref_path
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: RayCasting
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/ray_casting
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: ShortestPathsClustering
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/shortest_path_clustering
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: StateHist
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/state_history
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: PlanningGlobalPath
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/planning_global_path
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: NoGainZone
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/no_gain_zone
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: GoToWaypointVis
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /gbplanner/go_to_waypoint_pose_visualization
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: GVI_Viewpoints
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/graph_vertices
+      Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz_default_plugins/Pose
+      Color: 252; 233; 79
+      Enabled: true
+      Head Length: 0.30000001192092896
+      Head Radius: 0.20000000298023224
+      Name: PCI_Carrot
+      Shaft Length: 0.5
+      Shaft Radius: 0.10000000149011612
+      Shape: Arrow
+      Topic:
+        Depth: 10
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /pci_carrot
+      Value: true
+    - Alpha: 1
+      Arrow Length: 0.30000001192092896
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz_default_plugins/PoseArray
+      Color: 255; 25; 0
+      Enabled: true
+      Head Length: 0.10000000149011612
+      Head Radius: 0.20000000298023224
+      Name: PoseArray
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.10000000149011612
+      Shape: Arrow (3D)
+      Topic:
+        Depth: 10
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /vis/viewpoints
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: RepositioningGlobalPath
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /vis/imp_ref_path
+      Value: true
+    - Alpha: 0.5
+      Class: rviz_default_plugins/PointStamped
+      Color: 204; 41; 204
+      Enabled: true
+      History Length: 1
+      Name: LocalNavGoal
+      Radius: 1
+      Topic:
+        Depth: 10
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /gbplanner/local_target_viz
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10.00635051727295
+        Min Value: -0.006096351891756058
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz_default_plugins/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: AxisColor
+      Decay Time: 0
+      Enabled: false
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: gbplanner_ip_camera
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 1
+      Size (m): 0.009999999776482582
+      Style: Points
+      Topic:
+        Depth: 10
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /rmf_owl/lidar/points
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: false
+    Enabled: true
+    Name: PlannerViz
+  - Class: rviz_common/Group
+    Displays:
+    - Class: rviz_default_plugins/Image
+      Enabled: false
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Image
+      Normalize Range: true
+      Topic:
+        Depth: 2
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /rmf_owl/camera_front
+      Value: false
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 3.4948019981384277
+        Min Value: 0.24604690074920654
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz_default_plugins/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: AxisColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: VLP
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 1
+      Size (m): 0.009999999776482582
+      Style: Points
+      Topic:
+        Depth: 10
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /rmf_owl/lidar/points
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    Enabled: true
+    Name: Sensors
+  - Class: rviz_common/Group
+    Displays:
+    - Class: voxblox_rviz_plugin/VoxbloxMesh
+      Enabled: false
+      Name: VoxbloxMesh
+      Value: false
+      Topic:
+        Value: /gbplanner_node/mesh
+        Depth: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Durability Policy: Volatile
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: Occupied
+      Namespaces: {}
+      Topic:
+        Depth: 100
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /gbplanner_node/occupied_nodes
+      Value: false
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 2.8500001430511475
+        Min Value: -0.75
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz_default_plugins/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: AxisColor
+      Decay Time: 0
+      Enabled: false
+      Invert Rainbow: true
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: Tsdf
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.019999999552965164
+      Style: Flat Squares
+      Topic:
+        Depth: 10
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /gbplanner_node/tsdf_pointcloud
+      Use Fixed Frame: true
+      Use rainbow: false
+      Value: false
+    - Alpha: 0.5
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 3.700000047683716
+        Min Value: -0.2999999523162842
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz_default_plugins/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: AxisColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: SurfacePCL
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 2
+      Size (m): 0.05000000074505806
+      Style: Boxes
+      Topic:
+        Depth: 10
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /gbplanner_node/surface_pointcloud
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz_default_plugins/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: RGB8
+      Decay Time: 0
+      Enabled: false
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: ESDF_Surface
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 2
+      Size (m): 0.30000001192092896
+      Style: Boxes
+      Topic:
+        Depth: 10
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /gbplanner_node/esdf_surface_pointcloud
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: false
+    Enabled: true
+    Name: Voxblox
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: false
+    Name: CommandTraj
+    Namespaces: {}
+    Topic:
+      Depth: 100
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Best Effort
+      Value: /pci_command_trajectory_vis
+    Value: false
+  - Alpha: 1
+    Arrow Length: 0.30000001192092896
+    Axes Length: 0.30000001192092896
+    Axes Radius: 0.009999999776482582
+    Class: rviz_default_plugins/PoseArray
+    Color: 255; 0; 255
+    Enabled: true
+    Head Length: 0.10000000149011612
+    Head Radius: 0.20000000298023224
+    Name: PoseArray
+    Shaft Length: 0.5
+    Shaft Radius: 0.15000000596046448
+    Shape: Arrow (3D)
+    Topic:
+      Depth: 10
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /stable_detections_vis
+    Value: true
+  - Class: rviz_default_plugins/Image
+    Enabled: false
+    Max Value: 1
+    Median window: 5
+    Min Value: 0
+    Name: Image
+    Normalize Range: true
+    Topic:
+      Depth: 2
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /contour_img
+    Value: false
+  - Alpha: 1
+    Autocompute Intensity Bounds: true
+    Autocompute Value Bounds:
+      Max Value: 10
+      Min Value: -10
+      Value: true
+    Axis: Z
+    Channel Name: intensity
+    Class: rviz_default_plugins/PointCloud2
+    Color: 255; 255; 255
+    Color Transformer: Intensity
+    Decay Time: 0
+    Enabled: true
+    Invert Rainbow: false
+    Max Color: 255; 255; 255
+    Max Intensity: 4096
+    Min Color: 0; 0; 0
+    Min Intensity: 0
+    Name: PointCloud2
+    Position Transformer: XYZ
+    Selectable: true
+    Size (Pixels): 3
+    Size (m): 0.05000000074505806
+    Style: Flat Squares
+    Topic:
+      Depth: 10
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /contour_pcl
+    Use Fixed Frame: true
+    Use rainbow: true
+    Value: true
+  - Alpha: 1
+    Arrow Length: 0.30000001192092896
+    Axes Length: 0.30000001192092896
+    Axes Radius: 0.009999999776482582
+    Class: rviz_default_plugins/PoseArray
+    Color: 255; 25; 0
+    Enabled: true
+    Head Length: 0.07000000029802322
+    Head Radius: 0.10000000149011612
+    Name: PoseArray
+    Shaft Length: 0.23000000417232513
+    Shaft Radius: 0.05000000074505806
+    Shape: Arrow (3D)
+    Topic:
+      Depth: 10
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /contour_centroids
+    Value: true
+  - Class: rviz_default_plugins/MarkerArray
+    Enabled: true
+    Name: MarkerArray
+    Namespaces: {}
+    Topic:
+      Depth: 100
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Best Effort
+      Value: /vis/opening_traversal_path
+    Value: true
+  - Alpha: 1
+    Axes Length: 1
+    Axes Radius: 0.10000000149011612
+    Class: rviz_default_plugins/Pose
+    Color: 25; 255; 0
+    Enabled: true
+    Head Length: 0.30000001192092896
+    Head Radius: 0.30000001192092896
+    Name: Pose
+    Shaft Length: 0.5
+    Shaft Radius: 0.10000000149011612
+    Shape: Arrow
+    Topic:
+      Depth: 10
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /rmf_owl/tsdf_query_pt
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 25; 255; 0
+    Enabled: true
+    Head Diameter: 0.30000001192092896
+    Head Length: 0.20000000298023224
+    Length: 0.30000001192092896
+    Line Style: Billboards
+    Line Width: 0.029999999329447746
+    Name: Path
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0
+    Pose Color: 255; 85; 255
+    Pose Style: Axes
+    Radius: 0.029999999329447746
+    Shaft Diameter: 0.10000000149011612
+    Shaft Length: 0.10000000149011612
+    Topic:
+      Depth: 10
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /gbplanner_path
+    Value: true
+  - Alpha: 1
+    Buffer Length: 1
+    Class: rviz_default_plugins/Path
+    Color: 252; 233; 79
+    Enabled: true
+    Head Diameter: 0.30000001192092896
+    Head Length: 0.20000000298023224
+    Length: 0.30000001192092896
+    Line Style: Billboards
+    Line Width: 0.029999999329447746
+    Name: Path
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0
+    Pose Color: 255; 85; 255
+    Pose Style: None
+    Radius: 0.029999999329447746
+    Shaft Diameter: 0.10000000149011612
+    Shaft Length: 0.10000000149011612
+    Topic:
+      Depth: 10
+      Durability Policy: Volatile
+      Filter size: 10
+      History Policy: Keep Last
+      Reliability Policy: Reliable
+      Value: /command_traj_vis
+    Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 0; 0; 0
+    Fixed Frame: world
+    Frame Rate: 30
+  Name: root
+  Tools:
+  - Class: rviz_default_plugins/Interact
+    Hide Inactive Objects: true
+  - Class: rviz_default_plugins/MoveCamera
+  - Class: rviz_default_plugins/Select
+  - Class: rviz_default_plugins/FocusCamera
+  - Class: rviz_default_plugins/Measure
+    Line color: 128; 128; 0
+  - Class: rviz_default_plugins/SetInitialPose
+    Covariance x: 0.25
+    Covariance y: 0.25
+    Covariance yaw: 0.06853892326654787
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Best Effort
+      Value: /initialpose
+  - Class: rviz_default_plugins/SetGoal
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Best Effort
+      Value: /move_base_simple/goal
+  - Class: rviz_default_plugins/PublishPoint
+    Single click: true
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Best Effort
+      Value: /clicked_point
+  Transformation:
+    Current:
+      Class: rviz_default_plugins/TF
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 37.30137252807617
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.05999999865889549
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
+      Focal Point:
+        X: 0.7528623342514038
+        Y: -0.7101494073867798
+        Z: -1.056017518043518
+      Focal Shape Fixed Size: false
+      Focal Shape Size: 0.05000000074505806
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.009999999776482582
+      Pitch: 0.42979687452316284
+      Target Frame: rmf_owl/base_link
+      Value: Orbit (rviz)
+      Yaw: 3.8167591094970703
+    Saved: null
+Window Geometry:
+  Displays:
+    collapsed: false
+  GbPlanner Control:
+    collapsed: false
+  Height: 2806
+  Hide Left Dock: false
+  Hide Right Dock: true
+  Image:
+    collapsed: false
+  RMF Control:
+    collapsed: false
+  Selection:
+    collapsed: false
+  Time:
+    collapsed: false
+  Tool Properties:
+    collapsed: false
+  Views:
+    collapsed: true
+  Width: 5120
+  X: 0
+  Y: 0

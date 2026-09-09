@@ -71,6 +71,7 @@ def main():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--seconds", type=float, required=True)
+    parser.add_argument("--scenario", default="uav_cave")
     args = parser.parse_args()
 
     planner = read(args.out / "planner.log")
@@ -78,8 +79,9 @@ def main():
     sim = read(args.out / "sim.log")
     poses = read(args.out / "poses.txt")
     alive = read(args.out / "alive.txt")
+    teardown = read(args.out / "teardown.log")
 
-    print("Suite C - autonomous exploration")
+    print(f"Suite C - autonomous exploration: {args.scenario}")
     print(f"  run length: {args.seconds:.0f} s of wall clock\n")
 
     result = Result()
@@ -92,6 +94,12 @@ def main():
                  f"{len(pci.splitlines())} lines")
     result.check(bool(sim.strip()), "simulation produced output",
                  f"{len(sim.splitlines())} lines")
+    # The crash checks below run on the log up to the shutdown signal. If there
+    # is no teardown section the split did not happen, and they cover shutdown
+    # too - the safe direction, but worth saying out loud.
+    if not teardown.strip():
+        result.note("no teardown section: the run log was not split, so the "
+                    "crash checks below cover shutdown as well")
     if result.failures:
         print("\nnothing ran; the remaining checks would be meaningless")
         return 1
@@ -103,12 +111,31 @@ def main():
             result.check(hits == 0, f"{who} free of '{pattern}'",
                          "none" if hits == 0 else f"{hits}x - {meaning}")
 
-    result.check("alive at end: yes" in alive.replace("planner ", "").replace("pci ", ""),
-                 "nodes still alive at the end", alive.strip().replace("\n", "; ") or "unknown")
+    # Crashes while the launch was being torn down. Reported rather than
+    # asserted on: they say nothing about whether the stack works, and
+    # pci_general has a known one - rclcpp throws "context cannot be slept with
+    # because it's invalid" if SIGINT lands while it is sleeping between planner
+    # calls.
+    for pattern, meaning in FATAL_PATTERNS:
+        if pattern in teardown:
+            result.note(f"during shutdown only: '{pattern}' ({meaning})")
+
+    # Both halves of the stack have to still be in the ROS graph. An empty node
+    # list fails this, which is the point: "no errors found" over a stack that
+    # died two minutes ago is the failure mode this suite exists to catch.
+    nodes = [line[len("node: "):] for line in alive.splitlines()
+             if line.startswith("node: ")]
+    survivors = [n for n in ("gbplanner_node", "pci_general_ros_node")
+                 if any(n in node for node in nodes)]
+    result.check(
+        "launch alive at end: yes" in alive and len(survivors) == 2,
+        "nodes still alive at the end",
+        f"{len(nodes)} nodes in the graph, of which {survivors or 'neither of the two wanted'}")
 
     # 2. It planned, repeatedly. One graph is a first path; the regression this
     #    guards against is a stack that plans once and then stops.
     graphs = [(int(v), int(e)) for v, e in GRAPH_RE.findall(planner)]
+    first_real = None
     result.check(len(graphs) >= 3, "planned repeatedly",
                  f"{len(graphs)} graphs built")
     if graphs:
@@ -123,12 +150,42 @@ def main():
             result.check(False, "the planner ever built a real graph",
                          f"largest was {max(verts)} vertices over {len(verts)} calls")
         else:
+            # The warm-up prefix is allowed any length, which on its own lets a
+            # run pass while being degenerate for nearly all of it: ugv_niosh
+            # reported 1403 graphs of which 1392 were the root vertex alone, the
+            # first real one arriving 27 s in and eleven calls before the run
+            # ended. Nothing *after* the warm-up was wrong, so every check below
+            # passed on a run that had barely started working. So bound the
+            # warm-up itself. A stack that spends most of its planning calls
+            # unable to build a graph is not working yet, whatever it does in
+            # the calls that are left.
+            result.check(
+                first_real < len(verts) / 2,
+                "warm-up was a minority of the run",
+                f"first real graph at call {first_real + 1} of {len(verts)}; "
+                f"{100.0 * first_real / len(verts):.0f}% of calls produced "
+                f"nothing but the root vertex")
+
+            # What this guards is a stack that stops planning, so it asks two
+            # things of the graphs after the warm-up: that they are not mostly
+            # degenerate, and that the run does not end degenerate. A single
+            # one-vertex graph in the middle is not that - it is one call landing
+            # while the robot sits in a pocket the map has not covered yet, and
+            # both the UAV and the UGV produce one occasionally in a healthy run.
+            # Failing on it would make this check noise, which is worse than not
+            # having it. "Nothing happened" still fails, one check above: a run
+            # with no real graph at all never reaches here.
             after = verts[first_real:]
             degenerate_after = [v for v in after if v <= 1]
+            tail = after[-3:]
+            ended_degenerate = len(after) >= 3 and all(v <= 1 for v in tail)
+            mostly_degenerate = len(degenerate_after) > len(after) / 4
             result.check(
-                not degenerate_after, "no graph degenerated after warm-up",
+                not (ended_degenerate or mostly_degenerate),
+                "planning did not degenerate after warm-up",
                 f"warm-up {first_real} call(s), then {len(after)} graphs "
-                f"[{min(after)}..{max(after)}], mean {sum(after)/len(after):.0f}")
+                f"[{min(after)}..{max(after)}], mean {sum(after)/len(after):.0f}, "
+                f"{len(degenerate_after)} degenerate, last three {tail}")
 
     gains = [float(g) for g in GAIN_RE.findall(planner)]
     result.check(len(gains) >= 1 and all(g > 0 for g in gains),
@@ -158,6 +215,38 @@ def main():
         result.check(span > 3.0, "robot left its starting area",
                      f"furthest point {span:.1f} m from start")
 
+        # ... and stayed in the world. Distance alone is satisfied by a robot
+        # that fell through the floor: one ugv_niosh run scored 1102 m
+        # travelled and 979 m from start while ending at z = -602 m, having
+        # dropped through a gap in the tunnel's triangle mesh and accelerated
+        # under gravity for the rest of the run. Every other check passed. Two
+        # bounds catch it, and both are deliberately far outside anything a
+        # ground robot or a multicopter does in these worlds.
+        z0 = points[0][2]
+        worst_z = max(points, key=lambda p: abs(p[2] - z0))[2]
+        result.check(abs(worst_z - z0) < 50.0, "robot stayed in the world",
+                     f"z went from {z0:.2f} m to {worst_z:.2f} m")
+        jumps = [math.dist(a, b) for a, b in zip(points, points[1:])]
+        biggest = max(jumps) if jumps else 0.0
+        result.check(biggest < 25.0, "odometry is continuous",
+                     f"largest step between two samples {biggest:.1f} m")
+
+    # Why it stopped, when it stopped. Reported rather than asserted on: the
+    # assertion is the distance above, and this only says which half of the
+    # stack to look at. A follower that has stopped publishing is control logic;
+    # one still commanding a robot that does not move is geometry or physics.
+    cmd = read(args.out / "cmd_vel.txt")
+    if cmd:
+        samples = cmd.splitlines()
+        commanding = [ln for ln in samples
+                      if re.search(r"x:\s*(-?[0-9.eE+-]+)", ln)
+                      and abs(float(re.search(r"x:\s*(-?[0-9.eE+-]+)", ln).group(1))) > 1e-3]
+        result.note(f"follower published a non-zero forward velocity in "
+                    f"{len(commanding)}/{len(samples)} samples"
+                    + ("" if commanding else
+                       " - it stopped commanding, so look at the follower and "
+                       "the control interface, not at the simulation"))
+
     # 5. The regression fix, observed rather than argued: the three-second wait
     #    in runGlobalPlanner exists so a fresher pose arrives. Under the single
     #    threaded executor nothing could deliver one and this was always 0.
@@ -172,7 +261,9 @@ def main():
                     "this run is not evidence for that fix either.")
 
     summary = {
+        "scenario": args.scenario,
         "graphs": len(graphs),
+        "warmup_calls": first_real if graphs and first_real is not None else None,
         "vertices_mean": (sum(v for v, _ in graphs) / len(graphs)) if graphs else 0,
         "gains": len(gains),
         "planning_ms_mean": (sum(totals) / len(totals)) if totals else None,

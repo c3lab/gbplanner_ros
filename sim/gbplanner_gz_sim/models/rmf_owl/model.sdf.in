@@ -21,6 +21,15 @@
                               rendering sensor is not the same as not bridging
                               it: gz stops spending a render pass on it.
 
+  The blocks are `camera` (the two image sensors) and `cam_pitch` (the pitched
+  camera_link, its joint, the position controller and the joint-state
+  publisher). They are separate because the inspection scenario needs the pitch
+  and not the pictures: nothing in the stack subscribes to the images, while
+  the planner and the control interface both read the joint angle. `camera`
+  nests inside `cam_pitch` -- the depth sensor lives on the pitched link -- so
+  enabling the sensors without the joint is not a combination that exists, and
+  gz_sim.launch.py forces cam_pitch on whenever camera is on.
+
   Changes from the ROS 1 original, and why:
 
   * MulticopterPositionControl is GONE. That system is an NTNU addition to
@@ -209,7 +218,7 @@
             <!--END:camera-->
         </link>
 
-        <!--BEGIN:camera-->
+        <!--BEGIN:cam_pitch-->
         <link name="camera_link">
             <pose>0.25 0 0.0 0 0.0 0</pose>
             <inertial>
@@ -232,6 +241,7 @@
                     </cylinder>
                 </geometry>
             </visual>
+            <!--BEGIN:camera-->
             <sensor name="depth_camera_front" type="depth_camera">
                 <pose>0 0 0 0 0 0</pose>
                 <always_on>1</always_on>
@@ -266,6 +276,7 @@
                     </noise>
                 </camera>
             </sensor>
+            <!--END:camera-->
         </link>
         <joint name="camera_joint_pitch" type="revolute">
             <child>camera_link</child>
@@ -282,7 +293,7 @@
                 </limit>
             </axis>
         </joint>
-        <!--END:camera-->
+        <!--END:cam_pitch-->
 
         <link name="laser_link">
             <pose>0 0 0.05 0 -0 0</pose>
@@ -730,7 +741,7 @@
             <start_on_motion>true</start_on_motion>
         </plugin>
 
-        <!--BEGIN:camera-->
+        <!--BEGIN:cam_pitch-->
         <plugin filename="gz-sim-joint-position-controller-system"
                 name="gz::sim::systems::JointPositionController">
             <joint_name>camera_joint_pitch</joint_name>
@@ -748,6 +759,6 @@
             <joint_name>camera_joint_pitch</joint_name>
             <topic>{{robot_name}}/camera_pitch_state</topic>
         </plugin>
-        <!--END:camera-->
+        <!--END:cam_pitch-->
     </model>
 </sdf>

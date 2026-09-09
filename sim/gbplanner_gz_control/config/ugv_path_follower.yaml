@@ -1,0 +1,42 @@
+# Path tracker for the simulated MARBLE Husky. The wheels are driven by gz-sim's
+# DiffDrive, whose own acceleration limits live in the robot SDF; this file is
+# only the outer loop.
+/**:
+  ros__parameters:
+    # 20 Hz, as the UAV follower and the ROS 1 pure-pursuit tracker both ran.
+    control_rate: 20.0
+
+    # Waypoint acceptance, in the ground plane. Wider than the UAV's 0.4 m: a
+    # differential drive that overshoots a waypoint has to turn around to get
+    # back inside a tight radius, and the planner's next leg starts from
+    # wherever the robot is anyway.
+    trans_tolerance: 0.5
+
+    # How close the final heading has to be before the robot stops turning.
+    rot_tolerance: 0.2
+
+    # v = min(kp_lin * distance, v_max) * cos(heading error). v_max / kp_lin is
+    # where the command saturates: 1 m out at these values.
+    kp_lin: 1.0
+    kp_yaw: 1.5
+
+    # Keep at or below PlanningParams.v_max / yaw_rate_max in
+    # gbplanner_config.yaml (1.0 and 0.9 in the UGV configs), or the robot
+    # outruns the map the planner planned against. Both are also capped by
+    # DiffDrive's max_linear_velocity / max_angular_velocity in the SDF.
+    v_max: 1.0
+    yaw_rate_max: 0.9
+
+    # Heading error above which forward speed is given up entirely and the robot
+    # turns on the spot. 0.7 rad is about 40 degrees; beyond that cos() has
+    # already taken most of the speed away and what is left only widens the arc.
+    heading_align_threshold: 0.7
+
+    # Turn to the last waypoint's own heading once its position is reached. The
+    # planner yaws its paths deliberately -- the next leg is planned from this
+    # heading -- so it is worth the extra turn.
+    goal_yaw_enable: true
+
+    # Older than this and odometry counts as gone: stop, rather than keep
+    # driving on a command computed against a stale pose.
+    odometry_timeout: 1.0

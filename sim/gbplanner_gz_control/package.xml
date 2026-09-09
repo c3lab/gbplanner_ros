@@ -4,8 +4,10 @@
   <name>gbplanner_gz_control</name>
   <version>3.0.0</version>
   <description>
-    Path following and the position loop for the simulated UAV. Replaces gz-sim's
-    MulticopterPositionControl, which Gazebo Harmonic does not ship.
+    Path following for the simulated robots. For the UAV it also carries the
+    position loop, replacing gz-sim's MulticopterPositionControl, which Gazebo
+    Harmonic does not ship; for the UGV, DiffDrive is already there and only the
+    tracker is needed.
   </description>
   <maintainer email="sant.gabriele02@gmail.com">gbplanner3 maintainers</maintainer>
   <license>BSD-3-Clause</license>

@@ -16,7 +16,10 @@ exploration with
 The default world is the DARPA cave, whose tiles live in the subt_cave_sim
 checkout - 3.9 GB with git-lfs, deliberately not vendored here. `make run-sim`
 mounts it. Without those assets, pass `world:=cave_box` for the small
-primitives-only cave that ships with gbplanner_gz_sim.
+primitives-only cave that ships with gbplanner_gz_sim - but pass a spawn pose
+with it. The x/y/z below are the DARPA cave's staging area, and in cave_box
+(x within +/- 40) that lands the vehicle a few centimetres off the end wall. It
+flies from there, with less room than it should have.
 """
 
 from launch import LaunchDescription

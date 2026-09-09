@@ -1,0 +1,278 @@
+<?xml version="1.0" ?>
+<!--
+  Ship cargo hold / ballast tank compartment, ported from the ROS 1
+  arl_gazebo_sim world gz/worlds/cargo_hold.world (BSD-3-Clause, see that
+  repository's LICENSE). This is the world behind the wiki's
+  uav_gz_cargo_act_cam_inspection demo: a closed compartment whose stiffeners
+  and toe brackets are what the actuated-camera inspection planner sweeps.
+
+  The three meshes it names (cargo_hold_structure, bracket_toe,
+  horiz_web_frame) are NOT in this package; they are in the `subt_cave_sim`
+  model set, and together are under 100 KB, by far the cheapest asset set of
+  any world here. Point GZ_SIM_RESOURCE_PATH at a checkout of it, or pass
+  resource_path:= to gz_sim.launch.py.
+
+  Unlike the other ported worlds this one was already written for gz rather
+  than Classic, so the changes are shallow:
+
+  * ignition::gazebo::systems::* / libignition-gazebo-*-system.so become
+    gz::sim::systems::* / gz-sim-*-system. Harmonic renamed the project and no
+    longer ships the ignition-named libraries.
+  * A gz-gui block is added, so the world opens with a usable 3D view and a
+    working play/pause; the original had no <gui> at all.
+  * The world is renamed from "cosmos" to match the file. It shared that name
+    with darpa_cave_01.sdf, and the world name is in every gz topic and service
+    path, so two scenarios running at once were indistinguishable.
+  * <atmosphere>, <magnetic_field> and the ODE surface stubs on the ground
+    plane are dropped: nothing in this stack reads them.
+-->
+<sdf version="1.9">
+  <world name="cargo_hold">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.01</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <plugin filename="gz-sim-physics-system"
+        name="gz::sim::systems::Physics">
+    </plugin>
+    <plugin filename="gz-sim-user-commands-system"
+        name="gz::sim::systems::UserCommands">
+    </plugin>
+    <plugin filename="gz-sim-scene-broadcaster-system"
+        name="gz::sim::systems::SceneBroadcaster">
+    </plugin>
+    <plugin filename="gz-sim-imu-system"
+        name="gz::sim::systems::Imu">
+    </plugin>
+    <plugin filename="gz-sim-sensors-system"
+        name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <gui fullscreen="0">
+      <plugin filename="MinimalScene" name="3D View">
+        <gz-gui>
+          <title>3D View</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="string" key="state">docked</property>
+        </gz-gui>
+        <engine>ogre2</engine>
+        <scene>scene</scene>
+        <ambient_light>0.4 0.4 0.4</ambient_light>
+        <background_color>0.8 0.8 0.8</background_color>
+        <camera_pose>-12 -12 6 0 0.25 0.8</camera_pose>
+      </plugin>
+      <plugin filename="GzSceneManager" name="Scene Manager"/>
+      <plugin filename="InteractiveViewControl" name="Interactive view control"/>
+      <plugin filename="CameraTracking" name="Camera Tracking"/>
+
+      <plugin filename="WorldControl" name="World control">
+        <gz-gui>
+          <title>World control</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">72</property>
+          <property type="double" key="width">121</property>
+          <property type="double" key="z">1</property>
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="left" target="left"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </gz-gui>
+        <play_pause>true</play_pause>
+        <step>true</step>
+        <start_paused>false</start_paused>
+        <service>/world/cargo_hold/control</service>
+        <stats_topic>/world/cargo_hold/stats</stats_topic>
+      </plugin>
+
+      <plugin filename="WorldStats" name="World stats">
+        <gz-gui>
+          <title>World stats</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">110</property>
+          <property type="double" key="width">290</property>
+          <property type="double" key="z">1</property>
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="right" target="right"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </gz-gui>
+        <sim_time>true</sim_time>
+        <real_time>true</real_time>
+        <real_time_factor>true</real_time_factor>
+        <iterations>true</iterations>
+        <topic>/world/cargo_hold/stats</topic>
+      </plugin>
+
+      <plugin filename="EntityTree" name="Entity tree"/>
+      <plugin filename="ComponentInspector" name="Component Inspector"/>
+    </gui>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.6 0.6 0.6 1</ambient>
+            <diffuse>0.7 0.7 0.7 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="walls">
+      <pose>0 0 0 0 0 0</pose>
+      <static>true</static>
+      <link name="body">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://cargo_hold_structure/meshes/small_tank_walls.dae</uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name="collision">
+          <geometry>
+            <mesh>
+              <uri>model://cargo_hold_structure/meshes/small_tank_walls.dae</uri>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+
+    <!--
+      The toe brackets and the web frame. The <label> values are the
+      segmentation ids the original assigned; kept so a segmentation camera
+      added later sees the same scene the ROS 1 world described.
+    -->
+    <model name="bracket_toe_1">
+      <pose>-4.3 0.8 0.2 0 0 0</pose>
+      <static>true</static>
+      <link name="body">
+        <visual name="visual">
+          <plugin filename="gz-sim-label-system" name="gz::sim::systems::Label">
+            <label>100</label>
+          </plugin>
+          <geometry>
+            <mesh>
+              <uri>model://bracket_toe/meshes/bracket_toe.dae</uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name="collision">
+          <geometry>
+            <mesh>
+              <uri>model://bracket_toe/meshes/bracket_toe.dae</uri>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+
+    <model name="bracket_toe_2">
+      <pose>-4.3 -1.7 0.2 0 0 0</pose>
+      <static>true</static>
+      <link name="body">
+        <visual name="visual">
+          <plugin filename="gz-sim-label-system" name="gz::sim::systems::Label">
+            <label>101</label>
+          </plugin>
+          <geometry>
+            <mesh>
+              <uri>model://bracket_toe/meshes/bracket_toe.dae</uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name="collision">
+          <geometry>
+            <mesh>
+              <uri>model://bracket_toe/meshes/bracket_toe.dae</uri>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+
+    <model name="bracket_toe_3">
+      <pose>-4.3 -4.2 0.2 0 0 0</pose>
+      <static>true</static>
+      <link name="body">
+        <visual name="visual">
+          <plugin filename="gz-sim-label-system" name="gz::sim::systems::Label">
+            <label>102</label>
+          </plugin>
+          <geometry>
+            <mesh>
+              <uri>model://bracket_toe/meshes/bracket_toe.dae</uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name="collision">
+          <geometry>
+            <mesh>
+              <uri>model://bracket_toe/meshes/bracket_toe.dae</uri>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+
+    <model name="horiz_web_frame_1">
+      <pose>0 -2 5 0 0 0</pose>
+      <static>true</static>
+      <link name="body">
+        <visual name="visual">
+          <plugin filename="gz-sim-label-system" name="gz::sim::systems::Label">
+            <label>102</label>
+          </plugin>
+          <geometry>
+            <mesh>
+              <uri>model://horiz_web_frame/meshes/horiz_web_frame.dae</uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <collision name="collision">
+          <geometry>
+            <mesh>
+              <uri>model://horiz_web_frame/meshes/horiz_web_frame.dae</uri>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+
+  </world>
+</sdf>

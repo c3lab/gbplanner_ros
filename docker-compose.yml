@@ -128,8 +128,8 @@ services:
       bash -ci "source /workspace/gbplanner3_ws/install/setup.bash &&
       ros2 launch gbplanner ${LAUNCH_FILE}"
 
-  # One namespaced gbplanner stack plus the gz simulation, sim clock on.
-  # Started by `make run-sim <namespace>`.
+  # One namespaced gbplanner stack, sim clock on, against a simulator started
+  # elsewhere. Started by `make run-sim <namespace>`.
   run-sim:
     extends: base
     container_name: gbplanner_ros2-${NAMESPACE}
@@ -137,3 +137,18 @@ services:
       bash -ci "source /workspace/gbplanner3_ws/install/setup.bash &&
       ros2 launch gbplanner sim_gbplanner.launch.py
       namespace:=${NAMESPACE} rviz:=${RVIZ:-true} use_sim_time:=true"
+
+  # A whole named scenario: gz with its world and robot, the planner, the
+  # control interface and RViz, in one container. Started by
+  # `make run-sim <scenario>`, which resolves the name to LAUNCH_FILE.
+  #
+  # The container is named after the scenario rather than the namespace so that
+  # `make ps` and `make stop` -- which match on the gbplanner_ros2- prefix --
+  # still find it. These launch files are single-robot and use absolute topic
+  # names, so there is no namespace to carry here.
+  run-scenario:
+    extends: base
+    container_name: gbplanner_ros2-${SCENARIO:-scenario}
+    command: >
+      bash -ci "source /workspace/gbplanner3_ws/install/setup.bash &&
+      ros2 launch gbplanner ${LAUNCH_FILE} rviz:=${RVIZ:-true} ${LAUNCH_ARGS:-}"

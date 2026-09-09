@@ -1,0 +1,346 @@
+<?xml version="1.0" ?>
+<!--
+  DARPA SubT Urban Circuit course 01, ported from the ROS 1 arl_gazebo_sim world
+  gzc/worlds/urban_circuit_01.world (BSD-3-Clause, see that repository's
+  LICENSE). It is the multi-level underground factory behind the wiki's
+  ugv_gzc_urban_exploration demo, and the reason that demo exists: the tiles are
+  stacked three storeys deep, so a planner that only ever samples in the plane
+  it started on gets nowhere.
+
+  The <include> list below is the original's, in order and with the original
+  poses. The 12 distinct tile models it names are NOT in this package: they are
+  the ~3.9 GB git-lfs `subt_cave_sim` model set. Point GZ_SIM_RESOURCE_PATH at a
+  checkout of it, or pass resource_path:= to gz_sim.launch.py.
+
+  Changes from the ROS 1 original, all forced by Gazebo Classic being end of
+  life rather than chosen:
+
+  * librotors_gazebo_ros_interface_plugin is gone - Classic's ROS 1 bridge for
+    the RotorS multicopter. ros_gz_bridge does that job here.
+  * The WindEffects system and the <wind> block are dropped. They were named
+    with the ignition- library that Harmonic no longer ships, and the world sets
+    no wind velocity, so the system had nothing to do in the first place.
+  * A third <plugin name="ignition::gazebo" filename="dummy"/> is dropped; it
+    names no library and loaded nothing under Classic either.
+  * The ODE <physics> block is replaced by Harmonic's engine-agnostic form, and
+    the Harmonic system plugins and a gz-gui block are added. gz-sim loads
+    nothing it is not told to; without the Sensors system the gpu_lidar produces
+    no data at all.
+  * The <scene> ambient and background were written as 0-255 integers, which
+    Classic accepted and gz clamps to white. They are dropped in favour of the
+    GUI block's own values.
+  * The world keeps its name, urban_circuit_01, which already matched the file.
+
+  The 32 commented-out <include> blocks in the original - alternative blocking
+  boxes and unused tiles - are not carried over.
+-->
+<sdf version="1.9">
+  <world name="urban_circuit_01">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.004</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <plugin filename="gz-sim-physics-system"
+        name="gz::sim::systems::Physics">
+    </plugin>
+    <plugin filename="gz-sim-user-commands-system"
+        name="gz::sim::systems::UserCommands">
+    </plugin>
+    <plugin filename="gz-sim-scene-broadcaster-system"
+        name="gz::sim::systems::SceneBroadcaster">
+    </plugin>
+    <plugin filename="gz-sim-imu-system"
+        name="gz::sim::systems::Imu">
+    </plugin>
+    <plugin filename="gz-sim-sensors-system"
+        name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <gui fullscreen="0">
+      <plugin filename="MinimalScene" name="3D View">
+        <gz-gui>
+          <title>3D View</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="string" key="state">docked</property>
+        </gz-gui>
+        <engine>ogre2</engine>
+        <scene>scene</scene>
+        <ambient_light>0.4 0.4 0.4</ambient_light>
+        <background_color>0.8 0.8 0.8</background_color>
+        <camera_pose>40 -80 10 0 0.3 2.4</camera_pose>
+      </plugin>
+      <plugin filename="GzSceneManager" name="Scene Manager"/>
+      <plugin filename="InteractiveViewControl" name="Interactive view control"/>
+      <plugin filename="CameraTracking" name="Camera Tracking"/>
+
+      <plugin filename="WorldControl" name="World control">
+        <gz-gui>
+          <title>World control</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">72</property>
+          <property type="double" key="width">121</property>
+          <property type="double" key="z">1</property>
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="left" target="left"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </gz-gui>
+        <play_pause>true</play_pause>
+        <step>true</step>
+        <start_paused>false</start_paused>
+        <service>/world/urban_circuit_01/control</service>
+        <stats_topic>/world/urban_circuit_01/stats</stats_topic>
+      </plugin>
+
+      <plugin filename="WorldStats" name="World stats">
+        <gz-gui>
+          <title>World stats</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">110</property>
+          <property type="double" key="width">290</property>
+          <property type="double" key="z">1</property>
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="right" target="right"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </gz-gui>
+        <sim_time>true</sim_time>
+        <real_time>true</real_time>
+        <real_time_factor>true</real_time_factor>
+        <iterations>true</iterations>
+        <topic>/world/urban_circuit_01/stats</topic>
+      </plugin>
+
+      <plugin filename="EntityTree" name="Entity tree"/>
+      <plugin filename="ComponentInspector" name="Component Inspector"/>
+    </gui>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <include>
+      <static>true</static>
+      <name>blocking_box_2</name>
+      <uri>model://unit_box_1</uri>
+      <pose>-149.996277 22.119936 -6.089623 0 0 0</pose>
+    </include>
+
+    <include>
+      <static>true</static>
+      <name>blocking_box_3</name>
+      <uri>model://unit_box_1</uri>
+      <pose>-128.3 32.5 -6.089623 0 0 0</pose>
+    </include>
+
+    <include>
+      <static>true</static>
+      <name>blocking_box_4</name>
+      <uri>model://unit_box_1</uri>
+      <pose>-127.46 12.72 -6.089623 0 0 0</pose>
+    </include>
+
+    <include>
+      <name>extra_tile_2</name>
+      <uri>model://Urban Service Room Straight</uri>
+      <pose>-135.584610 -17.780985 -9.080000 0 0 3.141593</pose>
+    </include>
+
+    <include>
+      <name>extra_tile_3</name>
+      <uri>model://Urban 2 Story Lights</uri>
+      <pose>-135.584610 22.216398 -19.080000 0 0 1.570796</pose>
+    </include>
+
+    <include>
+      <static>true</static>
+      <name>staging_area</name>
+      <uri>model://Urban Starting Area</uri>
+      <pose>0 0 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <name>tile_1</name>
+      <uri>model://Urban Large Room Split Lights</uri>
+      <pose>-16.050000 -16.000000 0.920000 0 0 3.141593</pose>
+    </include>
+
+    <include>
+      <name>tile_2</name>
+      <uri>model://Urban Service Room Straight</uri>
+      <pose>23.950000 -16.000000 0.920000 0 0 1.570796</pose>
+    </include>
+
+    <include>
+      <name>tile_3</name>
+      <uri>model://Urban 2 Story Lights</uri>
+      <pose>63.950000 -16.000000 -9.080000 0 0 1.570796</pose>
+    </include>
+
+    <include>
+      <name>tile_4</name>
+      <uri>model://Urban Service Room Centered Lights</uri>
+      <pose>63.950000 -16.000000 -9.080000 0 0 0.000000</pose>
+    </include>
+
+    <include>
+      <name>tile_5</name>
+      <uri>model://Tunnel Tile Blocker</uri>
+      <pose>83.950000 -16.000000 -7.080000 0 0 0.000000</pose>
+    </include>
+
+    <include>
+      <name>tile_6</name>
+      <uri>model://Urban Large Room Split</uri>
+      <pose>-136.050000 -56.000000 -9.080000 0 0 -1.570796</pose>
+    </include>
+
+    <include>
+      <name>tile_8</name>
+      <uri>model://Tunnel Tile Blocker</uri>
+      <pose>-143.866394 -56.000000 -7.080000 0 0 0.000000</pose>
+    </include>
+
+    <include>
+      <name>tile_9</name>
+      <uri>model://Urban Large Room Split Lights</uri>
+      <pose>-96.050000 -56.000000 -9.080000 0 0 1.570796</pose>
+    </include>
+
+    <include>
+      <name>tile_10</name>
+      <uri>model://Urban Stairwell Platform Centered Lights</uri>
+      <pose>-56.050000 -56.000000 -9.080000 0 0 -1.570796</pose>
+    </include>
+
+    <include>
+      <name>tile_11</name>
+      <uri>model://Urban Large Room Split Lights</uri>
+      <pose>-16.050000 -56.000000 0.920000 0 0 0.000000</pose>
+    </include>
+
+    <include>
+      <name>tile_12</name>
+      <uri>model://Urban Stairwell Platform Centered Lights</uri>
+      <pose>63.950000 -56.000000 -9.080000 0 0 0.000000</pose>
+    </include>
+
+    <include>
+      <name>tile_13</name>
+      <uri>model://Urban 2 Story Lights</uri>
+      <pose>-96.050000 -96.000000 -19.080000 0 0 -1.570796</pose>
+    </include>
+
+    <include>
+      <name>tile_14</name>
+      <uri>model://Urban Service Room Centered</uri>
+      <pose>-96.050000 -96.000000 -19.080000 0 0 1.570796</pose>
+    </include>
+
+    <include>
+      <name>tile_15</name>
+      <uri>model://Urban Service Room Straight Lights</uri>
+      <pose>-56.050000 -96.000000 -9.080000 0 0 1.570796</pose>
+    </include>
+
+    <include>
+      <name>tile_16</name>
+      <uri>model://Urban Stairwell Platform Centered Lights</uri>
+      <pose>-16.050000 -96.000000 0.920000 0 0 3.141593</pose>
+    </include>
+
+    <include>
+      <name>tile_17</name>
+      <uri>model://Urban Service Room Straight</uri>
+      <pose>-16.050000 -96.000000 -9.080000 0 0 1.570796</pose>
+    </include>
+
+    <include>
+      <name>tile_18</name>
+      <uri>model://Urban Service Room Straight</uri>
+      <pose>23.950000 -96.000000 -9.080000 0 0 1.570796</pose>
+    </include>
+
+    <include>
+      <name>tile_19</name>
+      <uri>model://Urban 2 Story Lights</uri>
+      <pose>63.950000 -96.000000 -9.080000 0 0 3.141593</pose>
+    </include>
+
+    <include>
+      <name>tile_20</name>
+      <uri>model://Urban Service Room Centered Lights</uri>
+      <pose>63.950000 -96.000000 0.920000 0 0 3.141593</pose>
+    </include>
+
+    <include>
+      <name>tile_21</name>
+      <uri>model://Tunnel Tile Blocker</uri>
+      <pose>83.950000 -96.000000 2.920000 0 0 0.000000</pose>
+    </include>
+
+    <include>
+      <name>tile_22</name>
+      <uri>model://Urban Large Room Split Lights</uri>
+      <pose>-96.050000 -136.000000 10.920000 0 0 -1.570796</pose>
+    </include>
+
+    <include>
+      <name>tile_23</name>
+      <uri>model://Urban Service Room Centered</uri>
+      <pose>-96.050000 -136.000000 10.920000 0 0 1.570796</pose>
+    </include>
+
+    <include>
+      <name>tile_24</name>
+      <uri>model://Urban Service Room Centered</uri>
+      <pose>-96.050000 -136.000000 10.920000 0 0 0.000000</pose>
+    </include>
+
+    <include>
+      <name>tile_25</name>
+      <uri>model://Urban Large Room Split Lights</uri>
+      <pose>-56.050000 -136.000000 10.920000 0 0 1.570796</pose>
+    </include>
+
+    <include>
+      <name>tile_26</name>
+      <uri>model://Urban Service Room Centered Lights</uri>
+      <pose>-56.050000 -136.000000 10.920000 0 0 3.141593</pose>
+    </include>
+
+    <include>
+      <name>tile_27</name>
+      <uri>model://Urban 2 Story Lights</uri>
+      <pose>-16.050000 -136.000000 10.920000 0 0 3.141593</pose>
+    </include>
+
+    <include>
+      <name>tile_28</name>
+      <uri>model://Urban Service Room Centered Lights</uri>
+      <pose>-16.050000 -136.000000 20.920000 0 0 3.141593</pose>
+    </include>
+
+    <include>
+      <name>tile_29</name>
+      <uri>model://Urban Service Room Centered</uri>
+      <pose>-16.050000 -136.000000 20.920000 0 0 -1.570796</pose>
+    </include>
+
+  </world>
+</sdf>

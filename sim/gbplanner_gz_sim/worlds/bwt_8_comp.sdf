@@ -1,0 +1,193 @@
+<?xml version="1.0" ?>
+<!--
+  Eight-compartment ballast water tank, ported from the ROS 1 arl_gazebo_sim
+  world gzc/worlds/bwt_8_comp.world (BSD-3-Clause, see that repository's
+  LICENSE). It is the world behind the wiki's uav_gzc_bwt_inspection demo: a
+  sequence of stiffened compartments joined by manholes, which is what the
+  inspection planner's compartment-transition behaviour was written for.
+
+  The tank mesh (model://bwt_8comp) is NOT in this package; it is in the
+  `subt_cave_sim` model set, where it is 102 KB, the second cheapest asset any
+  of these worlds pulls in. Point GZ_SIM_RESOURCE_PATH at a checkout of it, or
+  pass resource_path:= to gz_sim.launch.py.
+
+  Changes from the ROS 1 original, all forced by Gazebo Classic being end of
+  life rather than chosen:
+
+  * librotors_gazebo_ros_interface_plugin is gone, and with it Classic's ROS 1
+    bridge for the RotorS multicopter. ros_gz_bridge does that job here.
+  * The Harmonic system plugins and a gz-gui block are added; gz-sim loads
+    nothing it is not told to, and without the Sensors system the gpu_lidar
+    produces no data at all.
+  * The saved <state> block, which recorded the pose and velocity of every
+    model at simulation second 187, is dropped. It restates the poses already
+    given and gz has no use for it.
+  * The ground plane's Gazebo/Grey material script becomes a plain colour:
+    Classic's material scripts do not exist in gz.
+  * <spherical_coordinates>, <magnetic_field>, <atmosphere> and <wind> are
+    dropped; nothing in this stack reads them.
+  * The world is named after the file rather than "default". Every gz service
+    and topic path contains the world name.
+-->
+<sdf version="1.9">
+  <world name="bwt_8_comp">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <plugin filename="gz-sim-physics-system"
+        name="gz::sim::systems::Physics">
+    </plugin>
+    <plugin filename="gz-sim-user-commands-system"
+        name="gz::sim::systems::UserCommands">
+    </plugin>
+    <plugin filename="gz-sim-scene-broadcaster-system"
+        name="gz::sim::systems::SceneBroadcaster">
+    </plugin>
+    <plugin filename="gz-sim-imu-system"
+        name="gz::sim::systems::Imu">
+    </plugin>
+    <plugin filename="gz-sim-sensors-system"
+        name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <gui fullscreen="0">
+      <plugin filename="MinimalScene" name="3D View">
+        <gz-gui>
+          <title>3D View</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="string" key="state">docked</property>
+        </gz-gui>
+        <engine>ogre2</engine>
+        <scene>scene</scene>
+        <ambient_light>0.4 0.4 0.4</ambient_light>
+        <background_color>0.8 0.8 0.8</background_color>
+        <camera_pose>-18 -22 14 0 0.45 0.9</camera_pose>
+      </plugin>
+      <plugin filename="GzSceneManager" name="Scene Manager"/>
+      <plugin filename="InteractiveViewControl" name="Interactive view control"/>
+      <plugin filename="CameraTracking" name="Camera Tracking"/>
+
+      <plugin filename="WorldControl" name="World control">
+        <gz-gui>
+          <title>World control</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">72</property>
+          <property type="double" key="width">121</property>
+          <property type="double" key="z">1</property>
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="left" target="left"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </gz-gui>
+        <play_pause>true</play_pause>
+        <step>true</step>
+        <start_paused>false</start_paused>
+        <service>/world/bwt_8_comp/control</service>
+        <stats_topic>/world/bwt_8_comp/stats</stats_topic>
+      </plugin>
+
+      <plugin filename="WorldStats" name="World stats">
+        <gz-gui>
+          <title>World stats</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">110</property>
+          <property type="double" key="width">290</property>
+          <property type="double" key="z">1</property>
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="right" target="right"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </gz-gui>
+        <sim_time>true</sim_time>
+        <real_time>true</real_time>
+        <real_time_factor>true</real_time_factor>
+        <iterations>true</iterations>
+        <topic>/world/bwt_8_comp/stats</topic>
+      </plugin>
+
+      <plugin filename="EntityTree" name="Entity tree"/>
+      <plugin filename="ComponentInspector" name="Component Inspector"/>
+    </gui>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>100</mu>
+                <mu2>50</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <cast_shadows>false</cast_shadows>
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.6 0.6 0.6 1</ambient>
+            <diffuse>0.7 0.7 0.7 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="bwt_8comp">
+      <static>true</static>
+      <pose>-0.71336 0.911994 0 0 -0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <mesh>
+              <uri>model://bwt_8comp/meshes/8_comp_longs_v2.stl</uri>
+            </mesh>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://bwt_8comp/meshes/8_comp_longs_v2.stl</uri>
+            </mesh>
+          </geometry>
+          <material>
+            <ambient>0.35 0.36 0.38 1</ambient>
+            <diffuse>0.55 0.57 0.60 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>
