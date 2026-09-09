@@ -70,13 +70,6 @@
     # with a warning, instead of pretending to drive.
     recovery_attempts_max: 3
 
-    # Turning on the spot does not count as stuck above, because a robot lining
-    # up with the next waypoint is doing exactly that. Turning on the spot
-    # *forever* is a different failure and was invisible: a full turn at
-    # yaw_rate_max takes about 3.5 s, so anything past this is a heading the
-    # robot is not converging on.
-    spin_timeout: 15.0
-
     # How far the robot may drift from its starting height before this node
     # decides it is no longer in the world and stops driving it. These gz
     # worlds are a single mesh with nothing outside it, so a robot that leaves
@@ -89,7 +82,7 @@
     # swings wildly with the robot's own position, so the heading error flips
     # sign as the robot rotates: it turns one way, crosses the bearing, turns
     # back, and never gets under heading_align_threshold to earn any forward
-    # speed. Measured on a live session, that is what the robot was doing when
-    # spin_timeout fired. A point a little over a metre out has a stable
-    # bearing, which is why pure pursuit uses one.
+    # speed. Measured on a live session: the robot turned on the spot for over
+    # fifteen seconds without ever converging. A point a little over a metre out
+    # has a stable bearing, which is why pure pursuit uses one.
     lookahead_distance: 1.2

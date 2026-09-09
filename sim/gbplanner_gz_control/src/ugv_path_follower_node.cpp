@@ -33,8 +33,7 @@ UGVPathFollowerNode::UGVPathFollowerNode(const rclcpp::NodeOptions & options)
 : rclcpp::Node("ugv_path_follower_node", options),
   last_odometry_stamp_(0, 0, RCL_ROS_TIME),
   stuck_reference_stamp_(0, 0, RCL_ROS_TIME),
-  recovery_until_(0, 0, RCL_ROS_TIME),
-  spin_since_(0, 0, RCL_ROS_TIME)
+  recovery_until_(0, 0, RCL_ROS_TIME)
 {
   world_frame_ = declare_parameter<std::string>("world_frame", "world");
   const double control_rate = declare_parameter<double>("control_rate", 20.0);
@@ -55,7 +54,6 @@ UGVPathFollowerNode::UGVPathFollowerNode(const rclcpp::NodeOptions & options)
   recovery_speed_ = declare_parameter<double>("recovery_speed", 0.4);
   recovery_yaw_rate_ = declare_parameter<double>("recovery_yaw_rate", 0.4);
   recovery_attempts_max_ = declare_parameter<int>("recovery_attempts_max", 3);
-  spin_timeout_ = declare_parameter<double>("spin_timeout", 15.0);
   world_z_limit_ = declare_parameter<double>("world_z_limit", 50.0);
 
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("command/velocity", 1);
@@ -278,31 +276,6 @@ void UGVPathFollowerNode::controlStep()
       cmd.linear.x =
         std::min(kp_lin_ * distance, v_max_) * std::cos(heading_error);
     }
-  }
-
-  // Turning on the spot is not being stuck, which is why handleStuck ignores
-  // it -- but turning on the spot *forever* is a failure of its own, and it was
-  // invisible. A full turn at yaw_rate_max takes about 3.5 s, so anything past
-  // spin_timeout is a heading the robot is not converging on: either it cannot
-  // rotate, or the target keeps moving out from under it.
-  const bool spinning_in_place =
-    std::abs(cmd.linear.x) < 1e-3 && std::abs(cmd.angular.z) > 1e-3;
-  if (spinning_in_place) {
-    if (!spinning_) {
-      spinning_ = true;
-      spin_since_ = now();
-    } else if ((now() - spin_since_).seconds() > spin_timeout_) {
-      RCLCPP_WARN_THROTTLE(
-        get_logger(), *get_clock(), 5000,
-        "Turning on the spot for %.0f s without converging on a heading; "
-        "dropping the path.", (now() - spin_since_).seconds());
-      poses_.clear();
-      spinning_ = false;
-      cmd_vel_pub_->publish(geometry_msgs::msg::Twist());
-      return;
-    }
-  } else {
-    spinning_ = false;
   }
 
   if (handleStuck(now(), cmd.linear.x)) {
