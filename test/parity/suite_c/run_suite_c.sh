@@ -134,6 +134,25 @@ CMD="${ODOM%/odometry}/command/velocity"
   done ) > /out/cmd_vel.txt 2>&1 &
 CMD_PID=$!
 
+# The initialisation step, which is what the RViz panel's "Initialization"
+# button calls. It exists because nothing sees the ground underneath a robot:
+# driving forward leaves the robot standing on a patch it observed a moment
+# earlier, on the way in. That matters for a ground robot, whose every sample
+# is projected onto observed terrain - without it the planner refuses the
+# robot's own position and never leaves the root vertex.
+#
+# Harmless where it is not configured: with init_motion_enable false the call
+# returns immediately, and the aerial scenarios take off instead. Failure is
+# not fatal here, only reported, because a scenario that does not offer the
+# service is a scenario that does not need it.
+echo "triggering initialisation motion"
+timeout 60 ros2 service call /pci_initialization_trigger \
+    planner_msgs/srv/PciInitialization > /out/init.log 2>&1 \
+    || echo "initialisation service not available or refused; continuing"
+# Let the manoeuvre finish and the map fill in behind the robot before the
+# planner is asked for anything.
+sleep 20
+
 echo "triggering autonomous exploration"
 timeout 60 ros2 service call /planner_control_interface/std_srvs/automatic_planning \
     std_srvs/srv/Trigger > /out/trigger.log 2>&1
