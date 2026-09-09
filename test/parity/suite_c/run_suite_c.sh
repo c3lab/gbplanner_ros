@@ -45,6 +45,7 @@ scenario_launch() {
     ugv_niosh) echo "ugv_gz_niosh_exploration.launch.py" ;;
     ugv_urban) echo "ugv_gz_urban_exploration.launch.py" ;;
     anymal_niosh) echo "anymal_gz_niosh_exploration.launch.py" ;;
+    go2) echo "go2_gz_exploration.launch.py" ;;
     *) return 1 ;;
   esac
 }
@@ -53,6 +54,7 @@ scenario_odom() {
     uav_*) echo "/rmf_owl/odometry" ;;
     ugv_*) echo "/marble_husky/odometry" ;;
     anymal_*) echo "/anymal/odometry" ;;
+    go2) echo "/odom" ;;
     *) return 1 ;;
   esac
 }

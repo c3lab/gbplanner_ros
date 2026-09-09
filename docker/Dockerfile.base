@@ -107,6 +107,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-xacro \
     && rm -rf /var/lib/apt/lists/*
 
+# What the Go2's CHAMP stack needs on top of ros2_control: robot_localization
+# for its EKF, and the velodyne description for the VLP-16 the robot carries.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-robot-localization \
+    ros-${ROS_DISTRO}-velodyne \
+    ros-${ROS_DISTRO}-velodyne-description \
+    && rm -rf /var/lib/apt/lists/*
+
 # BehaviorTree.CPP: the ROS 1 side vendored 4.7.0 from source; Jazzy ships 4.9.0
 # binaries. Same v4 API family, stricter XML validation - see docs/BT_NOTES.md.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -160,6 +168,12 @@ RUN --mount=type=ssh mkdir -p /opt/deps_ws/src \
     && touch /opt/deps_ws/src/mav_comm/mav_state_machine_msgs/COLCON_IGNORE \
              /opt/deps_ws/src/mav_comm/mav_system_msgs/COLCON_IGNORE \
              /opt/deps_ws/src/mav_comm/mav_comm/COLCON_IGNORE \
+    # The Go2 checkout ships its author's build/, install/ and log/ trees, and
+    # the five packages appear again under install/ with their package.xml.
+    # Without this colcon finds ten packages where there are five.
+    && rm -rf /opt/deps_ws/src/unitree_go2/build \
+              /opt/deps_ws/src/unitree_go2/install \
+              /opt/deps_ws/src/unitree_go2/log \
     && source /opt/ros/${ROS_DISTRO}/setup.bash \
     && cd /opt/deps_ws \
     # BUILD_SHARED_LIBS=ON is not optional. voxblox's CMake uses
