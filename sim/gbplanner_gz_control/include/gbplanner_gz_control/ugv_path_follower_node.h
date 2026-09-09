@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/twist.hpp>
@@ -47,6 +48,18 @@ private:
 
   bool isAtPosition(const geometry_msgs::msg::Pose & target) const;
 
+  /// Detect a robot that is being commanded but is not moving, and back out of
+  /// it. A differential drive wedged against a step reports the same odometry
+  /// forever while this node goes on asking for half a metre per second, and
+  /// the control interface goes on waiting for a path end that cannot arrive:
+  /// measured on niosh_osrf, 0.54 m/s commanded for 400 s with the pose moving
+  /// by micrometres. Nothing in the stack times that out, so the run is over
+  /// without anything logging an error.
+  ///
+  /// Returns true while a recovery is in progress, in which case controlStep
+  /// has already published the recovery command.
+  bool handleStuck(const rclcpp::Time & stamp, double commanded_speed);
+
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr cmd_pose_vis_pub_;
 
@@ -72,6 +85,21 @@ private:
   double heading_align_threshold_{0.0};
   bool goal_yaw_enable_{false};
   double odometry_timeout_{0.0};
+
+  // Stuck detection and recovery.
+  double stuck_timeout_{0.0};
+  double stuck_progress_{0.0};
+  double recovery_duration_{0.0};
+  double recovery_speed_{0.0};
+  double recovery_yaw_rate_{0.0};
+  int recovery_attempts_max_{0};
+
+  geometry_msgs::msg::Point stuck_reference_;
+  rclcpp::Time stuck_reference_stamp_;
+  bool have_stuck_reference_{false};
+  rclcpp::Time recovery_until_;
+  bool in_recovery_{false};
+  int recovery_attempts_{0};
 };
 
 }  // namespace gbplanner_gz_control

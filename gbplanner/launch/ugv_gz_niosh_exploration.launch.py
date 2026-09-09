@@ -67,7 +67,7 @@ def generate_launch_description() -> LaunchDescription:
             # raycasts on the CPU.
             "headless_rendering": "true",
             "resource_path": "/opt/subt_cave_sim/models",
-            "path_topic": "/gbplanner_path",
+            "path_topic": "/pci_command_path",
             "use_sim_time": LaunchConfiguration("use_sim_time"),
             "rviz": "false",
         }.items(),

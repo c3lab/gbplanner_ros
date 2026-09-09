@@ -48,7 +48,11 @@ Arguments (all optional):
                         default: false
     lidar               simulate and bridge the gpu_lidar. default: true
     path_topic          the nav_msgs/Path the controller follows.
-                        default: /gbplanner_path
+                        default: /pci_command_path, which is the control
+                        interface's executed path. Not /gbplanner_path: the
+                        planner publishes its best path there on every call,
+                        including the ones the interface rejects, so a follower
+                        on that topic chases paths nobody approved.
     resource_path       extra dirs for GZ_SIM_RESOURCE_PATH (the subt_cave_sim
                         models darpa_cave_01 needs). default: ''
     world_frame         TF root the planner works in. An identity link is
@@ -76,7 +80,7 @@ which only the multicopter's velocity controller needs):
 
 Consumed from the planner:
 
-    /gbplanner_path                 nav_msgs/Path (pci_general publishes it)
+    /pci_command_path               nav_msgs/Path (pci_general publishes it)
 
 So the planner side needs, on gbplanner_node:
 
@@ -179,7 +183,7 @@ _ARGS = [
     ("cam_pitch", "false",
      "rmf_owl only: the actuated camera joint and its two bridged topics."),
     ("lidar", "true", "Simulate and bridge the gpu_lidar."),
-    ("path_topic", "/gbplanner_path", "nav_msgs/Path the controller follows."),
+    ("path_topic", "/pci_command_path", "nav_msgs/Path the controller follows."),
     ("resource_path", "", "Extra directories for GZ_SIM_RESOURCE_PATH."),
     ("world_frame", "world", "TF root the planner works in; tied to the gz world frame."),
     ("lidar_horizontal_samples", "2048", "gpu_lidar horizontal beams."),

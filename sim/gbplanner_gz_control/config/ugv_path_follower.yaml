@@ -40,3 +40,32 @@
     # Older than this and odometry counts as gone: stop, rather than keep
     # driving on a command computed against a stale pose.
     odometry_timeout: 1.0
+
+    # --- Stuck detection and recovery ---
+    #
+    # A differential drive wedged against a step reports the same odometry for
+    # as long as you let it while this node goes on asking for half a metre per
+    # second. Measured on niosh_osrf: 0.54 m/s commanded for 400 s with the pose
+    # moving by micrometres, the planner still producing paths, the control
+    # interface still waiting for a path end that could not arrive, and nothing
+    # anywhere logging an error. The run was over and looked healthy.
+    #
+    # So: if the robot is being asked to drive and has not covered
+    # stuck_progress in stuck_timeout, back out and try again. Turning on the
+    # spot is not being stuck and does not count.
+    stuck_timeout: 6.0
+    stuck_progress: 0.15
+
+    # Reverse, with a little yaw so a second attempt does not retrace the first
+    # one straight back into whatever stopped the robot. The sign of the yaw
+    # alternates between attempts.
+    recovery_duration: 2.0
+    recovery_speed: 0.4
+    recovery_yaw_rate: 0.4
+
+    # After this many attempts on one path, give up on it: drop the path and
+    # hold. The planner will keep planning, but the control interface only asks
+    # for a new path once it believes the current one is finished, so a robot
+    # that is properly trapped still ends the run - it just ends it visibly,
+    # with a warning, instead of pretending to drive.
+    recovery_attempts_max: 3

@@ -31,7 +31,9 @@ double clampAbs(double value, double limit)
 
 UGVPathFollowerNode::UGVPathFollowerNode(const rclcpp::NodeOptions & options)
 : rclcpp::Node("ugv_path_follower_node", options),
-  last_odometry_stamp_(0, 0, RCL_ROS_TIME)
+  last_odometry_stamp_(0, 0, RCL_ROS_TIME),
+  stuck_reference_stamp_(0, 0, RCL_ROS_TIME),
+  recovery_until_(0, 0, RCL_ROS_TIME)
 {
   world_frame_ = declare_parameter<std::string>("world_frame", "world");
   const double control_rate = declare_parameter<double>("control_rate", 20.0);
@@ -45,6 +47,12 @@ UGVPathFollowerNode::UGVPathFollowerNode(const rclcpp::NodeOptions & options)
     declare_parameter<double>("heading_align_threshold", 0.7);
   goal_yaw_enable_ = declare_parameter<bool>("goal_yaw_enable", true);
   odometry_timeout_ = declare_parameter<double>("odometry_timeout", 1.0);
+  stuck_timeout_ = declare_parameter<double>("stuck_timeout", 6.0);
+  stuck_progress_ = declare_parameter<double>("stuck_progress", 0.15);
+  recovery_duration_ = declare_parameter<double>("recovery_duration", 2.0);
+  recovery_speed_ = declare_parameter<double>("recovery_speed", 0.4);
+  recovery_yaw_rate_ = declare_parameter<double>("recovery_yaw_rate", 0.4);
+  recovery_attempts_max_ = declare_parameter<int>("recovery_attempts_max", 3);
 
   cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("command/velocity", 1);
   cmd_pose_vis_pub_ = create_publisher<geometry_msgs::msg::PoseStamped>("command/pose_vis", 1);
@@ -70,6 +78,9 @@ void UGVPathFollowerNode::pathCallback(const nav_msgs::msg::Path & path)
     poses_.push_back(stamped.pose);
   }
   current_pose_index_ = 0;
+  have_stuck_reference_ = false;
+  in_recovery_ = false;
+  recovery_attempts_ = 0;
   // Debug, not info: with pub_singple_wp the control interface republishes a
   // one-pose carrot path every 50 ms.
   RCLCPP_DEBUG(get_logger(), "New path with %zu poses.", poses_.size());
@@ -88,6 +99,80 @@ bool UGVPathFollowerNode::isAtPosition(const geometry_msgs::msg::Pose & target) 
   const double dx = current_pose_.position.x - target.position.x;
   const double dy = current_pose_.position.y - target.position.y;
   return std::hypot(dx, dy) < trans_tolerance_;
+}
+
+bool UGVPathFollowerNode::handleStuck(const rclcpp::Time & stamp, double commanded_speed)
+{
+  if (in_recovery_) {
+    if (stamp < recovery_until_) {
+      geometry_msgs::msg::Twist cmd;
+      cmd.linear.x = -recovery_speed_;
+      // A little yaw with the reverse, so a second attempt does not retrace the
+      // first one straight back into whatever stopped the robot.
+      cmd.angular.z = (recovery_attempts_ % 2 == 0) ? recovery_yaw_rate_ : -recovery_yaw_rate_;
+      cmd_vel_pub_->publish(cmd);
+      return true;
+    }
+    in_recovery_ = false;
+    have_stuck_reference_ = false;
+  }
+
+  // Only meaningful while the robot is being asked to drive. Turning on the
+  // spot moves the position by nothing at all and is not being stuck.
+  if (std::abs(commanded_speed) < 1e-3) {
+    have_stuck_reference_ = false;
+    return false;
+  }
+
+  if (!have_stuck_reference_) {
+    stuck_reference_ = current_pose_.position;
+    stuck_reference_stamp_ = stamp;
+    have_stuck_reference_ = true;
+    return false;
+  }
+
+  const double moved = std::hypot(
+    current_pose_.position.x - stuck_reference_.x,
+    current_pose_.position.y - stuck_reference_.y);
+  if (moved > stuck_progress_) {
+    stuck_reference_ = current_pose_.position;
+    stuck_reference_stamp_ = stamp;
+    return false;
+  }
+
+  if ((stamp - stuck_reference_stamp_).seconds() < stuck_timeout_) {
+    return false;
+  }
+
+  // Commanded to drive, and has not covered stuck_progress_ in stuck_timeout_.
+  if (recovery_attempts_ >= recovery_attempts_max_) {
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 5000,
+      "Stuck after %d recovery attempts; dropping the path and holding. The "
+      "control interface will not replan until it sees the path end reached, "
+      "so this run needs a new trigger.",
+      recovery_attempts_);
+    poses_.clear();
+    have_stuck_reference_ = false;
+    geometry_msgs::msg::Twist cmd;
+    cmd_vel_pub_->publish(cmd);
+    return true;
+  }
+
+  ++recovery_attempts_;
+  in_recovery_ = true;
+  recovery_until_ = stamp + rclcpp::Duration::from_seconds(recovery_duration_);
+  RCLCPP_WARN(
+    get_logger(),
+    "Commanded %.2f m/s but moved %.3f m in %.1f s; reversing for %.1f s "
+    "(attempt %d of %d).",
+    commanded_speed, moved, stuck_timeout_, recovery_duration_,
+    recovery_attempts_, recovery_attempts_max_);
+  geometry_msgs::msg::Twist cmd;
+  cmd.linear.x = -recovery_speed_;
+  cmd.angular.z = (recovery_attempts_ % 2 == 0) ? recovery_yaw_rate_ : -recovery_yaw_rate_;
+  cmd_vel_pub_->publish(cmd);
+  return true;
 }
 
 void UGVPathFollowerNode::controlStep()
@@ -113,6 +198,7 @@ void UGVPathFollowerNode::controlStep()
   }
 
   if (poses_.empty()) {
+    have_stuck_reference_ = false;
     cmd_vel_pub_->publish(cmd);
     return;
   }
@@ -150,6 +236,10 @@ void UGVPathFollowerNode::controlStep()
       cmd.linear.x =
         std::min(kp_lin_ * distance, v_max_) * std::cos(heading_error);
     }
+  }
+
+  if (handleStuck(now(), cmd.linear.x)) {
+    return;
   }
 
   cmd_vel_pub_->publish(cmd);

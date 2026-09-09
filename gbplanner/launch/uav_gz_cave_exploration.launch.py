@@ -55,7 +55,7 @@ def generate_launch_description() -> LaunchDescription:
             "resource_path": "/opt/subt_cave_sim/models",
             # What the trajectory follower flies. The control interface publishes
             # the planner's path here.
-            "path_topic": "/gbplanner_path",
+            "path_topic": "/pci_command_path",
             "use_sim_time": LaunchConfiguration("use_sim_time"),
             # RViz belongs to the planner stack below, not to the simulator.
             "rviz": "false",

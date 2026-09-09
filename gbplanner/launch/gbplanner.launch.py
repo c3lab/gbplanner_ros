@@ -134,7 +134,21 @@ def generate_launch_description() -> LaunchDescription:
                     # planner_control_interface.cpp this subscription with a
                     # leading slash, so they escape any namespace. Pulled back
                     # to relative names, exactly as the ROS 1 launch did.
-                    ("/gbplanner_path", "gbplanner_path"),
+                    # pci_command_path, NOT gbplanner_path, and this is the
+                    # difference between a robot that follows the plan and one
+                    # that twitches at the start and stops. Two nodes publish
+                    # nav_msgs/Path on /gbplanner_path: rrg.cpp publishes the
+                    # planner's best path on every planning call, including the
+                    # calls this interface goes on to reject, and pci_general
+                    # publishes the path it has actually decided to execute,
+                    # after interpolation and the first-waypoint speed. A
+                    # follower subscribed to the raw topic receives both,
+                    # alternating, and chases whichever arrived last - so it
+                    # never completes either, the interface never sees a path
+                    # end reached, and it never asks for the next plan.
+                    # The planner keeps /gbplanner_path, which is what the RViz
+                    # configs display. Execution gets its own name.
+                    ("/gbplanner_path", "pci_command_path"),
                     ("/gbplanner_is_homing", "gbplanner_is_homing"),
                     ("/robot_status", "robot_status"),
                     ("/move_base_simple/goal", local_navigation_goal_topic),
