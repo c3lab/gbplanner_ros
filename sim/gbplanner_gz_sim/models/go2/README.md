@@ -42,3 +42,18 @@ YAML. A comment containing something YAML-shaped - a list, a colon, a quoted
 phrase - fails the whole launch with "Unable to parse the value of parameter
 robot_description as yaml". Measured, with the first draft of this text inside
 the xacro.
+
+## The odom topic name is not free
+
+gz's OdometryPublisher derives its covariance topic from the odom topic: set
+`<odom_topic>` and the covariance one becomes `<odom_topic>_with_covariance`
+unless it too is named explicitly. The first version of this file renamed the
+odom topic to keep it clear of the EKF's filtered `/odom`, and so published
+`/model/go2/odometry_ground_truth_with_covariance` - while their
+gazebo_bridge.yaml reads `/model/go2/odometry_with_covariance`. Nothing arrived
+on `/odom/raw`, the EKF had no input, `/odom` was never published, and gbplanner
+planned for a robot with no state: 2000 sampling loops per call, one vertex,
+"No feasible path was found" at all three bound modes.
+
+Both topics are named explicitly now. `/odom` on the ROS side comes from the
+EKF, not from this plugin.
