@@ -71,7 +71,21 @@ def generate_launch_description() -> LaunchDescription:
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory("ros_gz_sim"),
                          "launch", "gz_sim.launch.py")),
-        launch_arguments={"gz_args": [world, " -r -v 1"]}.items(),
+        # --physics-engine, and it is the difference between a quadruped that
+        # walks and one that ends up on its back. Their depot world declares
+        #   <physics type="bullet-featherstone"> max_step_size 0.004
+        # and CHAMP's gait is tuned against it. Our worlds leave the engine
+        # unset, so gz picks DART - and DART's default solver on twelve joints
+        # under stiff effort control is what the vibration and the flip were.
+        # Measured on a live run: gz reported roll = -3.14159 and body z = 0.106
+        # against 0.24 standing, while the two_d_mode EKF went on reporting a
+        # level robot at yaw 0, so the planner never saw it happen.
+        #
+        # Passed here rather than written into the worlds: the UAV and the
+        # wheeled robots run correctly on DART and share those files.
+        launch_arguments={
+            "gz_args": [world, " -r -v 1 --physics-engine gz-physics-bullet-featherstone-plugin"],
+        }.items(),
     )
 
     spawn = Node(
