@@ -67,7 +67,11 @@
     target_frame_init_submap: "base_link"
     # base_link is 0.32 m above the ground on a standing Go2, and the
     # initializer takes that frame's z plus this offset as the plane's height.
-    init_submap_height_offset: -0.32
+    # -0.24, the height base_link really stands at. At -0.32 the seeded floor
+    # plane sat 8 cm BELOW the true floor, so the edge of the 2x2 m init submap
+    # was a step against every cell the lidar had observed - and the footprint
+    # inclination test refuses a sample whose corners straddle a step.
+    init_submap_height_offset: -0.24
     length_in_x_init_submap: 2.0
     length_in_y_init_submap: 2.0
     margin_init_submap: 0.3

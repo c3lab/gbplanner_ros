@@ -215,7 +215,19 @@
       v_max:            0.5 # max velocity m/s
       v_homing_max:     0.5 # max velocity m/s
       yaw_rate_max:     0.3 # max angular velocity rad/s
-      yaw_tangent_correction: false # If true - all headings will be along the path segment
+      # true, as c3lab run it. I had this at false, inherited from the Husky
+      # config these files were built on top of, and never checked it against
+      # theirs - and false does more than change headings. rrg.cpp:3784 reads:
+      #
+      #   if(!planning_params_.yaw_tangent_correction) {
+      #     WARN("yaw_tangent_correction is false, disabling path_safety_enhance_enable.");
+      #     planning_params_.path_safety_enhance_enable = false;
+      #   }
+      #
+      # So path_safety_enhance_enable below says true and is silently forced to
+      # false at load, improveFreePath() never runs, and paths are never pushed
+      # away from obstacles. That is why the robot skims pillars.
+      yaw_tangent_correction: true # If true - all headings will be along the path segment
       edge_length_min:  0.2
       edge_length_max:  3.0
       edge_overshoot:   0.0 # m - Account for possible tracking error by collision checking on an extended edge

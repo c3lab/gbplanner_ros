@@ -68,7 +68,15 @@ def generate_launch_description() -> LaunchDescription:
             "world_init_x": LaunchConfiguration("x"),
             "world_init_y": LaunchConfiguration("y"),
             "world_init_z": LaunchConfiguration("z"),
+            "world_init_heading": LaunchConfiguration("yaw"),
             "rviz": "false",
+            # Their robot, with gz's odometry publisher switched back on - see
+            # the wrapper's header. Without it robot_localization has no
+            # translation to integrate and the whole stack plans for a robot
+            # standing at the origin.
+            "unitree_go2_description_path": PathJoinSubstitution(
+                [FindPackageShare("gbplanner_gz_sim"), "models", "go2",
+                 "go2_with_odometry.xacro"]),
         }.items(),
     )
 
@@ -88,6 +96,26 @@ def generate_launch_description() -> LaunchDescription:
             ],
             remappings=[("elevation_map", "/elevation_map")],
         )],
+    )
+
+    # world -> odom, identity.
+    #
+    # Everything in this repository works in "world": gbplanner's
+    # PlanningParams.global_frame_id, voxblox's world_frame, the elevation map's
+    # map_frame_id. CHAMP's tree is rooted at "odom" and no such frame exists in
+    # it, so without this the point clouds cannot be transformed and every graph
+    # is the root vertex alone - measured, 92 planning calls at one vertex each
+    # while the robot walked 35 m.
+    #
+    # Identity is correct rather than convenient: odom is fixed at the spawn
+    # point, and the spawn point is where the world's origin is put.
+    world_to_odom = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="world_to_odom",
+        output="log",
+        arguments=["--frame-id", "world", "--child-frame-id", "odom"],
+        parameters=[{"use_sim_time": True}],
     )
 
     # Path to Twist. CHAMP's own smoother sits behind /cmd_vel.
@@ -116,6 +144,8 @@ def generate_launch_description() -> LaunchDescription:
         launch_arguments={
             "config_folder": PathJoinSubstitution(
                 [pkg_share, "config", "go2", "gz", "exploration"]),
+            # The EKF's filtered output. Not /odom/raw, which is CHAMP's
+            # own leg-kinematics estimate and reports no translation at all.
             "odometry_topic": "/odom",
             # gz appends /points to a lidar's topic, and the bridge carries the
             # name through unchanged.
@@ -153,8 +183,12 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("x", default_value="0.0"),
             DeclareLaunchArgument("y", default_value="0.0"),
             DeclareLaunchArgument("z", default_value="0.40"),
+            # Their launch defaults the spawn heading to 0 and we never
+            # passed it, so there was no way to point the robot at all.
+            DeclareLaunchArgument("yaw", default_value="0.0"),
             DeclareLaunchArgument("rviz", default_value="true"),
             GroupAction([robot], scoped=True),
+            world_to_odom,
             elevation_map,
             follower,
             GroupAction([core], scoped=True),

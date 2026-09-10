@@ -26,8 +26,14 @@
     # 0.3; matched exactly here, or the robot outruns the map the planner
     # planned against. DiffDrive's limits in the SDF sit just above these so
     # it is these that bind.
-    v_max: 0.5
-    yaw_rate_max: 0.8
+    # CHAMP's gait.yaml is the authority here, not the robot's datasheet:
+    # max_linear_velocity_x 0.3 and max_angular_velocity_z 0.5 are the point the
+    # trot is designed around. Asking for more does not get refused, it gets
+    # attempted - and a trotting quadruped pushed past its gait tips over.
+    # Measured: commanding 0.5 and 0.8 put the robot on its back. These sit
+    # comfortably underneath.
+    v_max: 0.25
+    yaw_rate_max: 0.4
 
     # Heading error above which forward speed is given up entirely and the robot
     # turns on the spot. 0.7 rad is about 40 degrees; beyond that cos() has
