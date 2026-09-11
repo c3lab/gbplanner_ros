@@ -32,23 +32,7 @@ ament_target_dependencies(uav_path_follower_node
   tf2_geometry_msgs
 )
 
-add_executable(ugv_path_follower_node
-  src/ugv_path_follower_node.cpp
-  src/ugv_path_follower_main.cpp
-)
-target_include_directories(ugv_path_follower_node PRIVATE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-)
-ament_target_dependencies(ugv_path_follower_node
-  geometry_msgs
-  nav_msgs
-  rclcpp
-  std_msgs
-  tf2
-  tf2_geometry_msgs
-)
-
-install(TARGETS uav_path_follower_node ugv_path_follower_node
+install(TARGETS uav_path_follower_node
   DESTINATION lib/${PROJECT_NAME}
 )
 install(DIRECTORY include/

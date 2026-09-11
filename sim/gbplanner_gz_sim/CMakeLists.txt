@@ -3,10 +3,9 @@ project(gbplanner_gz_sim)
 
 find_package(ament_cmake REQUIRED)
 
-# No compiled code: this package is worlds, SDF templates, launch, rviz and
-# the config for the robot-support nodes it starts.
+# No compiled code: this package is worlds, SDF templates, launch and rviz.
 install(
-  DIRECTORY worlds models launch rviz config
+  DIRECTORY worlds models launch rviz
   DESTINATION share/${PROJECT_NAME}
 )
 

@@ -26,7 +26,6 @@ Arguments (all optional):
                         default: cave_box
     robot_model         which models/<name>/model.sdf.in to spawn, and with it
                         which follower to run: rmf_owl (multicopter) or
-                        marble_husky (differential drive). default: rmf_owl
     robot_name          gz model name, gz topic prefix, TF frame prefix and the
                         ROS namespace of every bridged robot topic. Defaults to
                         robot_model, so the two are the same string unless two
@@ -67,7 +66,6 @@ Arguments (all optional):
                         one installed by gbplanner_gz_control
 
 Published for the planner (with robot_model=robot_name=rmf_owl; the
-marble_husky publishes the same set at the same rates, minus /<robot>/enable,
 which only the multicopter's velocity controller needs):
 
     /clock                          rosgraph_msgs/Clock
@@ -121,7 +119,7 @@ GENERATED_SDF_DIR = Path("/tmp/gbplanner_gz_sim")
 #
 # `enable` is the asymmetry worth naming: MulticopterVelocityControl ignores
 # every Twist until something publishes true on that topic, while DiffDrive
-# acts on the first one it receives. Bridging a topic the husky has no
+# acts on the first one it receives. Bridging a topic the robot has no
 # subscriber for would be a silently dead ROS publisher.
 _ROBOTS = {
     "rmf_owl": {
@@ -147,43 +145,12 @@ _ROBOTS = {
             "@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked",
         ],
     },
-    # ANYmal. Same differential drive underneath as the husky -- the legs are
-    # visual only, see the model's header -- but it is the robot the planner is
-    # configured for as a *ground* robot, so it brings the elevation map with
-    # it. Without that layer RobotParams.type kGroundRobot rejects every sample.
-    "anymal": {
-        "follower": "ugv_path_follower_node",
-        "follower_config": "anymal_path_follower.yaml",
-        "enable_topic": False,
-        "elevation_map": True,
-        # Close-range ground sensing for the elevation map, and nothing else:
-        # the model's header explains why the robot cannot plan without it.
-        "ground_cam": True,
-        "cam_pitch_bridge": [],
-        "camera_bridge": [],
-    },
-    "marble_husky": {
-        "follower": "ugv_path_follower_node",
-        "follower_config": "ugv_path_follower.yaml",
-        "enable_topic": False,
-        "elevation_map": False,
-        "cam_pitch_bridge": [],
-        # One rgbd_camera sensor, which fans out into four gz topics under the
-        # sensor's own <topic> prefix.
-        "camera_bridge": [
-            "/{r}/camera_front/image@sensor_msgs/msg/Image[gz.msgs.Image",
-            "/{r}/camera_front/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
-            "/{r}/camera_front/depth_image@sensor_msgs/msg/Image[gz.msgs.Image",
-            "/{r}/camera_front/points"
-            "@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked",
-        ],
-    },
 }
 
 _ARGS = [
     ("world", "cave_box", "worlds/<name>.sdf in this package, or an absolute path."),
     ("robot_model", "rmf_owl",
-     "models/<name>/model.sdf.in to spawn: rmf_owl or marble_husky."),
+     "models/<name>/model.sdf.in to spawn."),
     ("robot_name", "", "gz model name; prefixes every gz topic and TF frame. "
                        "Empty means robot_model."),
     ("x", "0.0", "Spawn x [m]."),

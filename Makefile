@@ -23,27 +23,19 @@ LAUNCH_FILE ?= uav_gz_cave_exploration.launch.py
 #
 # Kept as SCENARIO_<name> variables rather than a table make would have to
 # parse, because $(SCENARIO_$(word)) is the whole lookup.
-SCENARIOS := uav_cave uav_cargo uav_niosh ugv_niosh ugv_urban anymal_niosh go2
+SCENARIOS := uav_cave uav_cargo uav_niosh
 
 SCENARIO_uav_cave   := uav_gz_cave_exploration.launch.py
 SCENARIO_uav_cargo  := uav_gz_cargo_inspection.launch.py
 SCENARIO_uav_niosh  := uav_gz_niosh_exploration.launch.py
-SCENARIO_ugv_niosh  := ugv_gz_niosh_exploration.launch.py
-SCENARIO_ugv_urban  := ugv_gz_urban_exploration.launch.py
-SCENARIO_anymal_niosh := anymal_gz_niosh_exploration.launch.py
-SCENARIO_go2        := go2_gz_exploration.launch.py
 
 DESC_uav_cave   := UAV, DARPA SubT cave (assets)
 DESC_uav_cargo  := UAV, cargo tank, actuated camera (assets)
 DESC_uav_niosh  := UAV, NIOSH mine (assets)
-DESC_ugv_niosh  := UGV, NIOSH mine (assets)
-DESC_ugv_urban  := UGV, SubT Urban Circuit, multi-level (assets)
-DESC_anymal_niosh := ANYmal, NIOSH mine, ground-robot planning (assets)
-DESC_go2        := Unitree Go2, walking, ground-robot planning
 
 # Extra `ros2 launch` arguments for a scenario, e.g. to run one without the
 # external assets or without the gz GUI:
-#   make run-sim ugv_niosh ARGS="world:=cave_box headless:=true"
+#   make run-sim uav_cave ARGS="headless:=true"
 ARGS ?=
 
 # Package rebuilt by `make rebuild` / `make run-sim <ns> rebuild`.
