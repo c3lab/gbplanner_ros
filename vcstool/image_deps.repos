@@ -3,15 +3,15 @@
 # Changing a pin here means an image rebuild, which is the point: nothing in this
 # file depends on gbplanner's own packages, so it does not churn.
 #
-# git@ for the private forks: the base service declares `ssh: [default]` and the
-# Dockerfile mounts the agent on the import step, so the build clones them the
-# same way a developer would. Public upstreams stay on https, which needs
-# nothing.
+# Everything here is public and clones over https, which needs no credentials.
+# The base service still declares `ssh: [default]` and the Dockerfile still mounts
+# the agent on the import step, from when the voxblox fork was private; neither
+# is needed any more.
 repositories:
   voxblox:
     type: git
-    url: https://github.com/GabrieleSantangelo/voxblox-ros2.git
-    # Branch `gbplanner`, NOT master. Master is forked from ethz-asl upstream and
+    url: https://github.com/c3lab/voxblox-ros2.git
+    # Branch `jazzy`, NOT master. Master is forked from ethz-asl upstream and
     # is missing the integrator that the ROS 1 side actually runs
     # (feature/new_abort_criterion_for_fast_integrator + the ntnu esdf_colorization
     # commits). Without it, clearing_ray_weight_factor is ignored and TSDF colour

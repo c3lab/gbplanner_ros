@@ -8,16 +8,21 @@ replacement in place.
 ## Quick start
 
 ```bash
-git clone git@github.com:GabrieleSantangelo/gbplanner_ros2.git
+git clone -b jazzy https://github.com/c3lab/gbplanner_ros.git gbplanner_ros2
 cd gbplanner_ros2
 make build-all          # image, then vcs import, then colcon build
 make scenarios          # what there is to run
 make run-sim uav_cave   # simulator + planner + RViz, one command
 ```
 
-`make build-all` needs an ssh-agent with a key that can read the three
-`*_ros2` repositories (`make bootstrap` clones them over SSH). `make help` lists
-every target.
+The ROS 2 port lives on branch `jazzy` of `c3lab/gbplanner_ros`, whose default
+branch is still the ROS 1 original. Clone it into `gbplanner_ros2`, not the
+default `gbplanner_ros`: the Makefile looks for the subt_cave_sim assets in a
+sibling `gbplanner_ros` checkout, which is the ROS 1 repository.
+
+Every dependency is public and clones over https. The Makefile still refuses
+`bootstrap`, `run` and `run-sim` without an ssh-agent (`SSH_AUTH_SOCK`), a check
+left from when they were private. `make help` lists every target.
 
 `make run-sim` takes one word and reads it two ways. A **scenario** name from
 `make scenarios` starts that whole demo - gz with its world and robot, the
@@ -60,7 +65,7 @@ not by who wrote it:
 ## Things that are not obvious
 
 **voxblox is a fork, deliberately.** `vcstool/image_deps.repos` pins
-`GabrieleSantangelo/voxblox-ros2` at branch `gbplanner`, not `master`. Upstream is
+`c3lab/voxblox-ros2` at branch `jazzy`, not `master`. Upstream is
 forked from ethz-asl master and is missing the integrator the ROS 1 side actually
 runs, which fails silently rather than loudly - obstacles get carved out of the
 map and collision checks return free through walls. `docs/VOXBLOX_FORK.md` has the

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Clone the Tier C sources (third-party packages that depend on gbplanner's own
-# packages) into bootstrap/. No build here: this step needs the host ssh-agent,
+# packages) into bootstrap/. No build here: this step needs the network,
 # while `make build-ws` must stay runnable offline.
 set -euo pipefail
 

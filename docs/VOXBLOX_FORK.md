@@ -1,7 +1,7 @@
 # Why gbplanner uses a fork of voxblox-ros2
 
-`vcstool/image_deps.repos` pins `GabrieleSantangelo/voxblox-ros2` at branch
-**`gbplanner`**, not `master`. This file records why, because both differences
+`vcstool/image_deps.repos` pins `c3lab/voxblox-ros2` at branch
+**`jazzy`**, not `master`. This file records why, because both differences
 below fail *silently* — the planner keeps running and produces plausible-looking
 paths through solid rock.
 
@@ -68,7 +68,7 @@ inspection / semantic gain never converges.
 
 ## What the fork changes
 
-Branch `gbplanner`, one commit on top of `243dc3e`:
+Branch `jazzy` on `c3lab/voxblox-ros2`, one commit on top of `243dc3e`:
 
 | File | Change |
 |---|---|
