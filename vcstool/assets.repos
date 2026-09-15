@@ -1,0 +1,17 @@
+# Simulation assets. Not packages: nothing here is built, and nothing here is
+# mounted into the colcon workspace. docker/bootstrap.sh imports this file into
+# bootstrap/ and then runs `git lfs pull`, because the meshes are LFS objects: a
+# plain clone leaves pointer files behind, and gz then fails on every model://
+# include with "Unable to find uri".
+#
+# subt_cave_sim provides every model the three UAV worlds include - the cave
+# tiles and artifacts of darpa_cave_01, niosh_seg01 for niosh_osrf, and the hull
+# structure for cargo_hold. Public, so https. Pinned to the commit the scenarios
+# were verified against, which is master's tip at the time of pinning. About
+# 3.9 GB on disk.
+repositories:
+  sim/subt_cave_sim:
+    type: git
+    url: https://github.com/ntnu-arl/subt_cave_sim.git
+    version: c93db01ed29230f5851095e83b4b2ea922616125
+  

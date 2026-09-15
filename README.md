@@ -10,15 +10,19 @@ replacement in place.
 ```bash
 git clone -b jazzy https://github.com/c3lab/gbplanner_ros.git gbplanner_ros2
 cd gbplanner_ros2
-make build-all          # image, then vcs import, then colcon build
+make build-all          # image, sources and cave assets, colcon build
 make scenarios          # what there is to run
 make run-sim uav_cave   # simulator + planner + RViz, one command
 ```
 
 The ROS 2 port lives on branch `jazzy` of `c3lab/gbplanner_ros`, whose default
-branch is still the ROS 1 original. Clone it into `gbplanner_ros2`, not the
-default `gbplanner_ros`: the Makefile looks for the subt_cave_sim assets in a
-sibling `gbplanner_ros` checkout, which is the ROS 1 repository.
+branch is still the ROS 1 original; cloning it into `gbplanner_ros2` keeps it
+apart from a ROS 1 checkout of the same repository.
+
+`make build-all` includes `make bootstrap`, which also downloads the
+`subt_cave_sim` models every scenario's world is built from - about 3.9 GB over
+git-lfs, into `bootstrap/sim/subt_cave_sim`. Set `SUBT_CAVE_SIM` to reuse a copy
+you already have.
 
 Every dependency is public and clones over https. The Makefile still refuses
 `bootstrap`, `run` and `run-sim` without an ssh-agent (`SSH_AUTH_SOCK`), a check
@@ -113,8 +117,8 @@ by namespace. Set `ROS_DOMAIN_ID` only to isolate robots completely.
 
 ## Running a scenario
 
-Three scenarios, all of them a UAV, all needing the `subt_cave_sim` model set
-(`SUBT_CAVE_SIM` in the Makefile says where it is looked for):
+Three scenarios, all of them a UAV, all needing the `subt_cave_sim` models that
+`make bootstrap` downloads (`SUBT_CAVE_SIM` overrides where they are read from):
 
 ```bash
 make run-sim uav_cave   ROS_DOMAIN_ID=42     # DARPA SubT cave
@@ -124,6 +128,10 @@ make run-sim uav_cargo  ROS_DOMAIN_ID=42     # cargo tank, actuated camera
 
 `ROS_DOMAIN_ID` is worth setting whenever anyone else is on the network: ROS 2
 has no master, so two stacks on the default domain will find each other's nodes.
+
+If gz prints `Unable to find uri[model://Cave Starting Area]` and the launch
+shuts down, the models are missing: run `make bootstrap`. `make run-sim` checks
+for them before starting and says so, unless a `world:=` is passed in `ARGS`.
 
 Nothing plans until it is told to. From the RViz panel press **Initialization**,
 then **Start Planner**; or, naming the container the scenario brought up:

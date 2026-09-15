@@ -14,15 +14,25 @@ mkdir -p ~/.ssh
 ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
 
 REPOS_FILE=${REPOS_FILE:-/workspace/src/vcstool/packages.repos}
-test -f "$REPOS_FILE" || { echo "repos file not found: $REPOS_FILE" >&2; exit 1; }
+ASSETS_FILE=${ASSETS_FILE:-/workspace/src/vcstool/assets.repos}
+for f in "$REPOS_FILE" "$ASSETS_FILE"; do
+  test -f "$f" || { echo "repos file not found: $f" >&2; exit 1; }
+done
 
 mkdir -p /workspace/bootstrap/exploration
+mkdir -p /workspace/bootstrap/sim
 mkdir -p /workspace/bootstrap/gbplanner3_ws/{build,install,log}
 mkdir -p /workspace/bootstrap/.cache/gz
 
 cd /workspace/bootstrap
 # Re-running over an existing checkout fetches instead of wiping it.
 vcs import --recursive < "$REPOS_FILE"
+
+# The world models every scenario needs. `git lfs pull` is what turns the
+# checkout from LFS pointer files into meshes; on a re-run it only fetches
+# objects that are missing.
+vcs import < "$ASSETS_FILE"
+git -C /workspace/bootstrap/sim/subt_cave_sim lfs pull
 
 echo
 echo "Tier C sources in bootstrap/:"

@@ -10,7 +10,7 @@ ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 # Launch file passed to `ros2 launch gbplanner`. Unlike roslaunch, ros2 launch
 # resolves a launch file by exact name inside the package's share/launch dir,
 # so subdirectories are flattened at install time and the basename is enough.
-# Override on the command line: make run LAUNCH_FILE=ugv_gz_urban_exploration.launch.py
+# Override on the command line: make run LAUNCH_FILE=uav_gz_niosh_exploration.launch.py
 LAUNCH_FILE ?= uav_gz_cave_exploration.launch.py
 
 # ---------------------------------------------------------------------------
@@ -53,10 +53,11 @@ REBUILD_PKG ?= gbplanner
 # Set ROS_DOMAIN_ID explicitly only to isolate whole robots from each other.
 ROS_DOMAIN_ID ?= 0
 
-# Where the subt_cave_sim tiles live, for the DARPA cave worlds. 3.9 GB with
-# git-lfs, so mounted rather than vendored; the ROS 1 checkout already has them.
-# Irrelevant when running world:=cave_box.
-SUBT_CAVE_SIM ?= $(shell dirname $(ROOT_DIR))/gbplanner_ros/bootstrap/sim/subt_cave_sim
+# Where the subt_cave_sim models live, for every UAV scenario's world. `make
+# bootstrap` downloads them here - about 3.9 GB over git-lfs, pinned in
+# vcstool/assets.repos. Point this at an existing copy to reuse it. Irrelevant
+# with world:=cave_box, which needs no assets.
+SUBT_CAVE_SIM ?= $(ROOT_DIR)/bootstrap/sim/subt_cave_sim
 
 # Whether run-sim brings up RViz alongside the planner. Turn it off for the
 # robots you are not watching - one RViz per robot is rarely what you want:
@@ -114,7 +115,7 @@ build: ## Build the gbplanner container image only
 	@echo "Building $(IMAGE_NAME):$(ROS_DISTRO)-$(GBPLANNER3_VERSION) container image..."
 	@$(COMPOSE) build base
 
-bootstrap: ## Clone the third-party workspace packages into bootstrap/
+bootstrap: ## Clone the third-party packages and download the cave assets into bootstrap/
 	@test -n "$$SSH_AUTH_SOCK" || (echo "SSH_AUTH_SOCK is not set. Start ssh-agent and run ssh-add before make bootstrap." && exit 1)
 	@echo "Cloning gbplanner3 workspace sources into bootstrap/..."
 	@chmod +x $(ROOT_DIR)/docker/bootstrap.sh
@@ -148,7 +149,7 @@ rebuild: ## Rebuild one package (REBUILD_PKG=$(REBUILD_PKG)) in the workspace
 	@$(COMPOSE) run --rm --no-deps rebuild
 endif
 
-run-sim: ## Run a scenario (make run-sim ugv_niosh) or one namespaced stack (make run-sim robot0) [rebuild]
+run-sim: ## Run a scenario (make run-sim uav_cave) or one namespaced stack (make run-sim robot0) [rebuild]
 	@test -n "$$SSH_AUTH_SOCK" || (echo "SSH_AUTH_SOCK is not set. Start ssh-agent and run ssh-add before make run-sim." && exit 1)
 ifneq ($(RUN_SIM_REBUILD),)
 	@$(MAKE) rebuild
@@ -156,6 +157,16 @@ endif
 	@xhost +SI:localuser:root >/dev/null
 ifneq ($(SCENARIO),)
 	@echo "Scenario '$(SCENARIO)': $(DESC_$(SCENARIO))"
+ifeq ($(findstring world:=,$(ARGS)),)
+	@# Checked here because nothing downstream reports it: Docker mounts a
+	@# missing directory as an empty one, gz fails on the first model://
+	@# include, and the whole launch shuts down behind a wall of
+	@# "Unable to find uri" errors. Skipped when a world is passed explicitly.
+	@test -d "$(SUBT_CAVE_SIM)/models" || { \
+	  echo "The subt_cave_sim models are not at $(SUBT_CAVE_SIM)/models."; \
+	  echo "Run 'make bootstrap' to download them (about 3.9 GB, git-lfs),"; \
+	  echo "or set SUBT_CAVE_SIM to an existing copy."; exit 1; }
+endif
 	@echo "Launching $(SCENARIO_$(SCENARIO)) $(ARGS) on ROS_DOMAIN_ID=$(ROS_DOMAIN_ID) (rviz:=$(RVIZ))..."
 	@# -p isolates each scenario into its own compose project, the same way the
 	@# namespace path below does, so two of them do not recreate each other's
@@ -174,15 +185,15 @@ scenarios: ## List the named scenarios run-sim accepts
 	@echo ""
 	@$(foreach s,$(SCENARIOS),printf '  \033[36m%-12s\033[0m %s\n' '$(s)' '$(DESC_$(s))';)
 	@echo ""
-	@echo "  (assets) = needs the subt_cave_sim model set, mounted from SUBT_CAVE_SIM"
-	@echo "             from $(SUBT_CAVE_SIM)"
-	@echo "  Most scenarios also accept world:=cave_box, which needs no assets:"
-	@echo "    make run-sim ugv_niosh ARGS=\"world:=cave_box\""
+	@echo "  (assets) = needs the subt_cave_sim model set, which make bootstrap downloads,"
+	@echo "             read from $(SUBT_CAVE_SIM)"
+	@echo "  uav_cave and uav_niosh also accept world:=cave_box, which needs no assets:"
+	@echo "    make run-sim uav_cave ARGS=\"world:=cave_box\""
 	@echo ""
 	@echo "Any other word is read as a namespace instead, for multi-robot:"
 	@echo "  make run-sim robot0 / make run-sim robot1 RVIZ=false"
 
-stop-sim: ## Stop the stack for one scenario or namespace: make stop-sim SCENARIO=ugv_niosh
+stop-sim: ## Stop the stack for one scenario or namespace: make stop-sim SCENARIO=uav_cave
 	@$(COMPOSE) -p gbplanner-$(if $(SCENARIO),$(SCENARIO),$(NAMESPACE)) down
 
 enter-dev: ## Attach a shell to the running dev container
