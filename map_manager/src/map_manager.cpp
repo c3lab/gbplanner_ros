@@ -142,6 +142,14 @@ void MapManager::extractLocalMapAlongAxis(
     free_voxels);
 }
 
+void MapManager::getFreeVolume(double& volume, pcl::PointCloud<pcl::PointXYZ>& cloud)
+{
+  if (map_manager_impl_) {
+    map_manager_impl_->getFreeVolume(volume, cloud);
+  }
+}
+
+
 void MapManager::getLocalPointcloud(const Eigen::Vector3d& center, const double& range,
                         const double& yaw,
                         pcl::PointCloud<pcl::PointXYZI>& pcl,

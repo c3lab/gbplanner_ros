@@ -514,6 +514,29 @@ void MapManagerVoxblox<SDFServerType, SDFVoxelType>::extractLocalMap(
 }
 
 template <typename SDFServerType, typename SDFVoxelType>
+void MapManagerVoxblox<SDFServerType, SDFVoxelType>::getFreeVolume(
+    double& volume, pcl::PointCloud<pcl::PointXYZ>& cloud) {
+  voxblox::BlockIndexList blocks;
+  sdf_layer_->getAllAllocatedBlocks(&blocks);
+  double res = getResolution();
+  size_t free_count = 0;
+  for (const auto& index : blocks) {
+    auto block = sdf_layer_->getBlockPtrByIndex(index);
+    if (!block) continue;
+    for (size_t linear_index = 0; linear_index < block->num_voxels(); ++linear_index) {
+      voxblox::Point pt = block->computeCoordinatesFromLinearIndex(linear_index);
+      Eigen::Vector3d coord(pt.x(), pt.y(), pt.z());
+      if (getVoxelStatus(coord) == VoxelStatus::kFree) {
+        free_count++;
+        cloud.push_back(pcl::PointXYZ(coord.x(), coord.y(), coord.z()));
+      }
+    }
+  }
+  volume = free_count * std::pow(res, 3);
+}
+
+
+template <typename SDFServerType, typename SDFVoxelType>
 void MapManagerVoxblox<SDFServerType, SDFVoxelType>::extractLocalMapAlongAxis(
     const Eigen::Vector3d& center, const Eigen::Vector3d& axis,
     const Eigen::Vector3d& bounding_box_size,

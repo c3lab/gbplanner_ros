@@ -66,6 +66,8 @@ class MapManager {
       std::vector<Eigen::Vector3d>& occupied_voxels,
       std::vector<Eigen::Vector3d>& free_voxels);
   
+  void getFreeVolume(double& volume, pcl::PointCloud<pcl::PointXYZ>& cloud);
+
   void getLocalPointcloud(const Eigen::Vector3d& center, const double& range,
                           const double& yaw,
                           pcl::PointCloud<pcl::PointXYZI>& pcl,

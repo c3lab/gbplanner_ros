@@ -175,6 +175,8 @@ class MapManagerVoxblox {
                        std::vector<Eigen::Vector3d>& occupied_voxels,
                        std::vector<Eigen::Vector3d>& free_voxels);
 
+  void getFreeVolume(double& volume, pcl::PointCloud<pcl::PointXYZ>& cloud);
+
   void extractLocalMapAlongAxis(const Eigen::Vector3d& center,
                                 const Eigen::Vector3d& axis,
                                 const Eigen::Vector3d& bounding_box_size,

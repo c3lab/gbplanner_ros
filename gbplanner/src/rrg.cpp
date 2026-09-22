@@ -85,6 +85,9 @@ void Rrg::initializeAttributes() {
   
   local_target_pub_ =
       nh_.advertise<geometry_msgs::PointStamped>("gbplanner/local_target_viz", 10);
+      
+  explored_voxels_pub_ =
+      nh_.advertise<sensor_msgs::PointCloud2>("gbplanner/explored_voxels", 1, true);
   //
   global_graph_update_timer_ =
       nh_.createTimer(ros::Duration(kGlobalGraphUpdateTimerPeriod),
@@ -122,6 +125,7 @@ void Rrg::initializeAttributes() {
   reset_map_srv_ = nh_.advertiseService("reset_map", &Rrg::resetMapCallback, this);
   query_srv_ = nh_.advertiseService("query_srv", &Rrg::queryCallback, this);
   remove_geofence_srv_ = nh_.advertiseService("remove_geofence", &Rrg::removeGeofenceCallback, this);
+  explored_volume_srv_ = nh_.advertiseService("gbplanner/get_explored_volume", &Rrg::getExploredVolumeCallback, this);
 
   ele_map_sub_ = nh_.subscribe("elevation_map", 1, &Rrg::eleMapCallback, this);
 
@@ -9969,6 +9973,35 @@ bool RobotStateHistory::getNearestStateInRange(const StateVec* state,
       state->z() - (*s_res)->z();
   kd_res_free(nearest);
   if (dist.norm() > range) return false;
+  return true;
+}
+
+bool Rrg::getExploredVolumeCallback(
+    std_srvs::Trigger::Request& req,
+    std_srvs::Trigger::Response& res) {
+  if (!map_manager_) {
+    res.success = false;
+    res.message = "map_manager not initialized";
+    return true;
+  }
+
+  double resolution = map_manager_->getResolution();
+
+  pcl::PointCloud<pcl::PointXYZ> free_cloud;
+  double volume = 0.0;
+  
+  map_manager_->getFreeVolume(volume, free_cloud);
+
+  sensor_msgs::PointCloud2 out_msg;
+  pcl::toROSMsg(free_cloud, out_msg);
+  out_msg.header.frame_id = "world";
+  out_msg.header.stamp = ros::Time::now();
+  explored_voxels_pub_.publish(out_msg);
+
+  res.success = true;
+  res.message = std::to_string(volume);
+
+  ROS_INFO("Explored volume: %.2f m3 (%zu free voxels)", volume, free_cloud.size());
   return true;
 }
 

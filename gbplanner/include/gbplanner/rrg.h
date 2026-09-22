@@ -442,6 +442,7 @@ class Rrg {
   ros::Publisher free_cloud_pub_;
   ros::Publisher entry_point_pub_;
   ros::Publisher local_target_pub_;
+  ros::Publisher explored_voxels_pub_;
 
   ros::Subscriber semantics_subscriber_;
   ros::Subscriber stop_srv_subscriber_;
@@ -458,8 +459,10 @@ class Rrg {
   ros::ServiceServer reset_map_srv_;
   ros::ServiceServer query_srv_;
   ros::ServiceServer remove_geofence_srv_;
+  ros::ServiceServer explored_volume_srv_;
 
   bool resetTimerCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
+  bool getExploredVolumeCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
   bool getOpeningPathCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
   bool approvePassingCallback(planner_msgs::planner_opening_approval::Request &req, planner_msgs::planner_opening_approval::Response &res);
   bool resetMapCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
