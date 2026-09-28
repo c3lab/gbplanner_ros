@@ -79,6 +79,11 @@ void Rrg::initializeAttributes() {
 
   local_target_pub_ = node_->create_publisher<geometry_msgs::msg::PointStamped>(
       "gbplanner/local_target_viz", 10);
+
+  // Latched, like ROS 1's advertise(..., 1, true): a late subscriber still
+  // gets the last explored-voxel cloud.
+  explored_voxels_pub_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>(
+      "gbplanner/explored_voxels", rclcpp::QoS(1).transient_local());
   //
   global_graph_update_timer_ = node_->create_wall_timer(
       std::chrono::duration<double>(kGlobalGraphUpdateTimerPeriod),
@@ -140,6 +145,10 @@ void Rrg::initializeAttributes() {
   reset_map_srv_ = node_->create_service<std_srvs::srv::Trigger>(
       "reset_map", std::bind(&Rrg::resetMapCallback, this,
                              std::placeholders::_1, std::placeholders::_2));
+  explored_volume_srv_ = node_->create_service<std_srvs::srv::Trigger>(
+      "gbplanner/get_explored_volume",
+      std::bind(&Rrg::getExploredVolumeCallback, this, std::placeholders::_1,
+                std::placeholders::_2));
   query_srv_ = node_->create_service<std_srvs::srv::Trigger>(
       "query_srv", std::bind(&Rrg::queryCallback, this, std::placeholders::_1,
                              std::placeholders::_2));
@@ -270,6 +279,32 @@ void Rrg::resetMapCallback(const std::shared_ptr<std_srvs::srv::Trigger::Request
   (void)req;
   map_manager_->resetMap();
   res->success = true;
+}
+
+void Rrg::getExploredVolumeCallback(
+    const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
+    std::shared_ptr<std_srvs::srv::Trigger::Response> res) {
+  (void)req;
+  if (!map_manager_) {
+    res->success = false;
+    res->message = "map_manager not initialized";
+    return;
+  }
+
+  pcl::PointCloud<pcl::PointXYZ> free_cloud;
+  double volume = 0.0;
+  map_manager_->getFreeVolume(volume, free_cloud);
+
+  sensor_msgs::msg::PointCloud2 out_msg;
+  pcl::toROSMsg(free_cloud, out_msg);
+  out_msg.header.frame_id = "world";
+  out_msg.header.stamp = node_->now();
+  explored_voxels_pub_->publish(out_msg);
+
+  res->success = true;
+  res->message = std::to_string(volume);
+  RCLCPP_INFO(node_->get_logger(), "Explored volume: %.2f m3 (%zu free voxels)",
+              volume, free_cloud.size());
 }
 
 void Rrg::queryCallback(const std::shared_ptr<std_srvs::srv::Trigger::Request> req,

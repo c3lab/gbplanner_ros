@@ -68,6 +68,10 @@ class MapManager {
   void getFreeSpacePointCloud(std::vector<Eigen::Vector3d>, StateVec,
                               pcl::PointCloud<pcl::PointXYZ>::Ptr);
 
+  // Every allocated voxel the map classifies as free, as a cloud, and their
+  // total volume. Backs gbplanner/get_explored_volume (dghost coverage).
+  void getFreeVolume(double& volume, pcl::PointCloud<pcl::PointXYZ>& cloud);
+
   void extractLocalMap(const Eigen::Vector3d& center,
                                const Eigen::Vector3d& bounding_box_size,
                                std::vector<Eigen::Vector3d>& occupied_voxels,

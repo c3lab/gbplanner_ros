@@ -30,9 +30,14 @@ vcs import --recursive < "$REPOS_FILE"
 
 # The world models every scenario needs. `git lfs pull` is what turns the
 # checkout from LFS pointer files into meshes; on a re-run it only fetches
-# objects that are missing.
-vcs import < "$ASSETS_FILE"
-git -C /workspace/bootstrap/sim/subt_cave_sim lfs pull
+# objects that are missing. SKIP_ASSETS=1 leaves them out: a planner run
+# against an external simulator (`make run-sim <namespace>`) never loads them.
+if [ "${SKIP_ASSETS:-0}" = "1" ]; then
+  echo "SKIP_ASSETS=1: not downloading the subt_cave_sim models."
+else
+  vcs import < "$ASSETS_FILE"
+  git -C /workspace/bootstrap/sim/subt_cave_sim lfs pull
+fi
 
 echo
 echo "Tier C sources in bootstrap/:"

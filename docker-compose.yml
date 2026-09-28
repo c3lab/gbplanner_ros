@@ -90,6 +90,8 @@ services:
   bootstrap:
     extends: base
     container_name: gbplanner_ros2-bootstrap
+    environment:
+      SKIP_ASSETS: ${SKIP_ASSETS:-0}
     volumes:
       - ${SSH_AUTH_SOCK}:/ssh-agent
       - ${ROOT_DIR}:/workspace/src

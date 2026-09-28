@@ -460,6 +460,7 @@ class Rrg {
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr free_cloud_pub_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr entry_point_pub_;
   rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr local_target_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr explored_voxels_pub_;
 
   rclcpp::Subscription<planner_semantic_msgs::msg::SemanticPoint>::SharedPtr semantics_subscriber_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr stop_srv_subscriber_;
@@ -474,6 +475,7 @@ class Rrg {
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr pass_opening_srv_;
   rclcpp::Service<planner_msgs::srv::PlannerOpeningApproval>::SharedPtr approve_passing_srv_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_map_srv_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr explored_volume_srv_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr query_srv_;
   rclcpp::Service<planner_msgs::srv::PlannerSetPlanningMode>::SharedPtr remove_geofence_srv_;
 
@@ -486,6 +488,11 @@ class Rrg {
       std::shared_ptr<planner_msgs::srv::PlannerOpeningApproval::Response> res);
   void resetMapCallback(const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
                         std::shared_ptr<std_srvs::srv::Trigger::Response> res);
+  // dghost coverage: publishes every free voxel on gbplanner/explored_voxels
+  // and answers with the explored (free) volume in m^3 as the message.
+  void getExploredVolumeCallback(
+      const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
+      std::shared_ptr<std_srvs::srv::Trigger::Response> res);
   void queryCallback(const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
                      std::shared_ptr<std_srvs::srv::Trigger::Response> res);
   void removeGeofenceCallback(

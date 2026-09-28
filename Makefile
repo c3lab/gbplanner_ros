@@ -58,6 +58,9 @@ ROS_DOMAIN_ID ?= 0
 # vcstool/assets.repos. Point this at an existing copy to reuse it. Irrelevant
 # with world:=cave_box, which needs no assets.
 SUBT_CAVE_SIM ?= $(ROOT_DIR)/bootstrap/sim/subt_cave_sim
+# SKIP_ASSETS=1 makes `make bootstrap` leave the subt_cave_sim models out, for
+# setups that only run namespaced planners against their own simulator.
+SKIP_ASSETS ?= 0
 
 # Whether run-sim brings up RViz alongside the planner. Turn it off for the
 # robots you are not watching - one RViz per robot is rarely what you want:
@@ -102,6 +105,7 @@ export NAMESPACE
 export REBUILD_PKG
 export ROS_DOMAIN_ID
 export SUBT_CAVE_SIM
+export SKIP_ASSETS
 export RVIZ
 export SCENARIO
 export LAUNCH_ARGS
